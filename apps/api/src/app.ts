@@ -1,3 +1,4 @@
+import { registerTaskRoutes } from './tasks/routes.js';
 import { registerAccountRoutes } from './accounts/routes.js';
 import type { AccountService } from './accounts/service.js';
 import type { MailService } from './accounts/mail.js';
@@ -37,7 +38,10 @@ export async function buildApp(options: AppOptions) {
     }
   });
   app.get('/api/v1/version', { schema: { operationId: 'getVersion', response: { 200: versionSchema } } }, async () => ({ name: 'Tendly' as const, version: options.version ?? '0.0.0-dev' }));
-  if (options.accounts) await registerAccountRoutes(app, options.accounts.service, options.accounts.mail);
+  if (options.accounts) {
+    await registerAccountRoutes(app, options.accounts.service, options.accounts.mail);
+    await registerTaskRoutes(app, options.accounts.service);
+  }
   await app.ready();
   return app;
 }
