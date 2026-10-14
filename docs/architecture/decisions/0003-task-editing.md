@@ -30,3 +30,9 @@ its existing specifications; this records the implementation boundary.
 Stage 3 refetches open lists periodically and on local changes/window focus. Full
 WebSocket mutation propagation, reconnect reconciliation and expanded Undo history
 remain Stage 7 work. Plain text descriptions become rich content in that stage.
+
+General API traffic has a 300/minute allowance per validated user; anonymous traffic
+retains 120/minute per source IP. In-login/recovery-specific tighter limits still apply.
+Session lookup is reused within each request, and unverified cookie values never
+create new limiter buckets. This prevents one person's autosave/refetch activity from
+blocking another person's invitation behind the same reverse proxy.
