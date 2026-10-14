@@ -169,3 +169,16 @@ The image illustrates visual rhythm, tinted epic cards, light/dark surfaces and 
 ## Invitation codes — owner addition, 2026-10-14
 
 Household invitation forms offer email delivery or a copyable one-use code, with a visible 30-minute countdown. Show the recipient address, explain that joining must finish before expiry, and replace expired codes with a clear create-again message. Codes use text fields, not password fields. Provide manual selection when clipboard access is unavailable. Recipients paste a code from the sign-in screen or account settings; existing accounts authenticate before accepting.
+
+### Owner review clarification — place maps and icon search (2026-10-14)
+
+Place editing supports a manually placed, draggable map pin and a visible radius,
+with a slider and exact metre input. Coordinates remain editable without map tiles;
+opening or cancelling the editor does not change saved geodata. This is manual place
+configuration, not automatic location detection. Map tiles load only when opened.
+
+The shared icon picker searches the full bundled Lucide catalog, not just the visible
+page. Include open and covered utility trailers, with English and Swedish search
+terms (`trailer`, `släp`); keep the coherent monochrome outline style. Browse results
+in manageable batches and show the result count. English icon names remain searchable
+in either UI language; common household terms have Swedish aliases.

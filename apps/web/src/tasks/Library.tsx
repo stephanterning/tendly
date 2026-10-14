@@ -2,9 +2,11 @@ import { useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, ArrowDown, Plus } from 'lucide-react';
-import { entityKinds, iconNames, palette, type Entity, type EntityKind } from '@tendly/shared';
+import { entityKinds, palette, type Entity, type EntityKind } from '@tendly/shared';
 import { api, result } from '../accounts/api.js';
 import { Dialog } from '../components/ui/dialog.js';
+import { IconPicker } from './IconPicker.js';
+import { PlaceLocation } from './PlaceLocation.js';
 import { EntityIcon, epicStyle } from './identity.js';
 export function Library({ householdId, entities, admin }: { householdId: string; entities: Entity[]; admin: boolean }) {
   const { t } = useTranslation();
@@ -37,7 +39,6 @@ function EntityEditor({ entity, kind, householdId, onClose, onSaved }: { entity:
   const queries = useQueryClient();
   const [icon, setIcon] = useState(entity?.icon ?? 'house');
   const [color, setColor] = useState(entity?.color ?? 'blue');
-  const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   async function run(action: () => Promise<unknown>) {
@@ -58,11 +59,11 @@ function EntityEditor({ entity, kind, householdId, onClose, onSaved }: { entity:
     <form onSubmit={submit}><fieldset disabled={busy}>
       <label>{t('entityName')}<input name="name" maxLength={100} defaultValue={entity?.name} required autoFocus /></label>
       <label>{t('description')}<textarea name="description" rows={2} defaultValue={entity?.description ?? ''} /></label>
-      <label>{t('findIcon')}<input type="search" value={search} onChange={e => setSearch(e.target.value)} /></label>
-      <div className="icon-picker" role="group" aria-label={t('icon')}>{iconNames.filter(name => (name + ' ' + t('icon_' + name)).toLowerCase().includes(search.toLowerCase())).map(name => <button type="button" key={name} aria-label={t('icon_' + name)} aria-pressed={icon === name} onClick={() => setIcon(name)}><EntityIcon name={name} size={21} /></button>)}</div>
+      {kind === 'place' && <PlaceLocation entity={entity} disabled={busy} />}
+      <IconPicker value={icon} onChange={setIcon} />
       <p>{t('color')}</p><div className="color-picker" role="group" aria-label={t('color')}>{palette.map(p => <button type="button" key={p.id} aria-label={t('color_' + p.id)} aria-pressed={color === p.id} style={{ background: 'oklch(70% .14 ' + p.hue + ')' }} onClick={() => setColor(p.id)} />)}</div>
       <div className="epic-previews" style={epicStyle({ color })}><div className="preview-light"><EntityIcon name={icon} /><span>{t('previewLight')}</span></div><div className="preview-dark"><EntityIcon name={icon} /><span>{t('previewDark')}</span></div></div>
-      {kind === 'place' && <details><summary>{t('coordinates')}</summary><div className="form-grid"><label>{t('latitude')}<input name="latitude" type="number" step="any" min={-90} max={90} defaultValue={entity?.latitude ?? ''} /></label><label>{t('longitude')}<input name="longitude" type="number" step="any" min={-180} max={180} defaultValue={entity?.longitude ?? ''} /></label></div><label>{t('radius')}<input name="radius" type="number" min={1} defaultValue={entity?.radius ?? ''} /></label></details>}
+
       <div className="button-row"><button className="primary" type="submit">{t('save')}</button><button type="button" onClick={onClose}>{t('cancel')}</button></div>
       {entity && <div className="entity-danger button-row">
         {kind === 'epic' && <button type="button" onClick={() => void run(() => result(api.PATCH('/api/v1/households/{householdId}/entities/{id}', { params: { path: { householdId, id: entity.id } }, body: { baseVersion: entity.version, changes: { archived: !entity.archived } } })))}>{t(entity.archived ? 'restoreEntity' : 'archiveEntity')}</button>}
