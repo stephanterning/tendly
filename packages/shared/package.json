@@ -1,0 +1,19 @@
+{
+  "name": "@tendly/shared",
+  "private": true,
+  "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "4.6.7",
+    "openapi-fetch": "0.15.2"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./client": "./dist/client.js"
+  }
+}
