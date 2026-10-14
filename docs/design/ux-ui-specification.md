@@ -165,3 +165,7 @@ Aim for WCAG 2.2 AA with effective contrast checked against every palette card s
 ![Approved visual direction — illustrative only](references/approved-visual-direction.png)
 
 The image illustrates visual rhythm, tinted epic cards, light/dark surfaces and density, **not** literal labels, states or features. An implementation that copies a hallucinated status/priority from an image violates the Product Specification. Implementers should create **real interactive UI** to fine-tune spacings/contrast instead of using generated mockups as pixel-perfect assets.
+
+## Invitation codes — owner addition, 2026-10-14
+
+Household invitation forms offer email delivery or a copyable one-use code, with a visible 30-minute countdown. Show the recipient address, explain that joining must finish before expiry, and replace expired codes with a clear create-again message. Codes use text fields, not password fields. Provide manual selection when clipboard access is unavailable. Recipients paste a code from the sign-in screen or account settings; existing accounts authenticate before accepting.

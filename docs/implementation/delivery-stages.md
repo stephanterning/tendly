@@ -1,7 +1,7 @@
 # Tendly — approved eight-stage delivery plan
 
 Approved by the owner on 2026-10-14. These are internal checkpoints within the complete
-Milestone 1 VP, not smaller releases. Current authorization covers **Stage 1 only**.
+Milestone 1 VP, not smaller releases. Stage 1 was accepted by the owner on 2026-10-14. Current authorization covers **Stage 2**.
 
 | Stage | Deliverable | Dependencies | Review and verification | Acceptance coverage |
 |---|---|---|---|---|

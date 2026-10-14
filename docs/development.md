@@ -15,7 +15,7 @@ contract change run `pnpm api:generate` and review the diff. Do not hand-edit ge
 DTOs. If changing Zod schemas, regenerate before running the full build.
 
 For local processes, start a dedicated PostgreSQL database (see Compose), then set
-`DATABASE_URL` and `PUBLIC_ORIGIN=http://localhost:5173` in your shell. Do not commit
+`DATABASE_URL`, a 32-byte hex `APP_ENCRYPTION_KEY`, `NODE_ENV=development` and `PUBLIC_ORIGIN=http://localhost:5173` in your shell. Do not commit
 real credentials. Run `pnpm db:migrate`, then in separate terminals:
 
 ```sh
@@ -41,3 +41,33 @@ Use a dedicated test database. The integration test fails rather than silently s
 when its database URL is missing. It checks concurrent migration runners and persistence
 through repeated migration execution. CI also restarts the Compose services to test
 persistent data and API readiness.
+
+
+## Focused browser journey
+
+`pnpm test:e2e` runs a single Chromium journey using a virtual authenticator. The
+server verifies genuine WebAuthn registration/assertion payloads; it is not mocked.
+The journey covers first setup, verified email, invitation, mobile light/dark settings,
+role isolation, email recovery, session revocation, login and CLI recovery without SMTP.
+
+Use an isolated Compose project whose name contains `test`, on port 8081:
+
+```sh
+pnpm exec playwright install chromium
+bash infrastructure/scripts/test-mailbox.sh
+export COMPOSE_PROJECT_NAME=tendly-accounts-test
+export COMPOSE_FILE=compose.yaml:compose.test.yaml
+export NODE_ENV=development PUBLIC_ORIGIN=http://localhost:8081 HTTP_PORT=8081
+# Set APP_ENCRYPTION_KEY and POSTGRES_PASSWORD to disposable test values.
+docker compose up --build --wait
+pnpm test:e2e
+docker compose down --volumes
+```
+
+The journey requires an empty database. The final command destroys only this
+explicitly named test project's volumes. The test mailbox binds localhost:8025 and
+uses a temporary trusted TLS certificate. It never sends to an external mail server.
+Screenshots and disposable certificates are ignored under `test-results/`; browser
+traces are disabled so one-use authentication links are not stored in traces.
+Account integration tests create/drop their own random databases and require a
+test PostgreSQL role with database-creation privileges.
