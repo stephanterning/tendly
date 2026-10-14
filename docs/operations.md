@@ -81,7 +81,7 @@ Open Email settings, supply your SMTP host/port, STARTTLS or TLS, optional crede
 and sender address. Save, then send a test to your own email. SMTP transport requires
 valid TLS certificates; passwords are encrypted in PostgreSQL, never returned by the API.
 Next verify your email from Your account and invite household members from Household.
-Invitation recipients verify their email by redeeming the one-use link. Existing
+Email invitation recipients verify their email by redeeming the one-use link. Existing
 accounts sign in before accepting; an invitation cannot replace their passkeys.
 
 Use HTTPS for real deployments. For a local-only preview, explicitly set
@@ -123,3 +123,18 @@ administrator. Household membership changes preserve at least one household admi
 The last passkey cannot be removed. Security events record actions and account IDs,
 without credential secrets. Session/token database values are hashes; links use URL
 fragments and are removed from the address bar after capture.
+
+## Invite without SMTP
+
+In Household, enter the recipient email and role and choose Create invitation code,
+then Copy invitation code. The code expires **30 seconds after creation**, works once
+and does not require SMTP. Share it privately with the intended recipient. They open
+the same Tendly installation and use Have an invitation code? on the sign-in screen
+(or in Your account if already signed in). New users register a passkey; existing users
+must sign into the matching account. Joining must finish within the 30-second window.
+If it expires during passkey setup, create a fresh code and try again.
+
+The recipient address remains unverified. Verify it separately after configuring SMTP
+to enable email recovery. The UI shows remaining time and lets you select/copy manually
+if browser clipboard access is denied. A browser cannot retract a code already copied
+to the clipboard, but server expiration and one-use consumption remain authoritative.

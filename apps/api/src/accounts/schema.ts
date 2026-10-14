@@ -40,6 +40,7 @@ export const sessions = pgTable('sessions', {
 export const tokens = pgTable('account_tokens', {
   id: text('id').primaryKey(),
   purpose: tokenPurpose('purpose').notNull(),
+  verifiesEmail: boolean('verifies_email').notNull().default(false),
   email: text('email'),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
   householdId: uuid('household_id').references(() => households.id, { onDelete: 'cascade' }),

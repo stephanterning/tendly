@@ -64,7 +64,7 @@ export class AccountService {
         if (!token.email) throw new AccountError('invalid_or_expired_link');
         email = token.email;
         const [existing] = await this.db.select().from(users).where(eq(users.email, email));
-        // An invitation proves access to an inbox, not permission to replace an
+        // An invitation grants membership, not permission to replace an
         // existing account's passkeys. Existing users accept while signed in.
         if (existing) throw new AccountError('sign_in_to_accept_invitation', 409);
         context = { flow: input.flow, tokenHash: token.id, userId: randomUUID(), email, language: input.language ?? 'en', name: input.name };
@@ -121,7 +121,7 @@ export class AccountService {
           await tx.insert(memberships).values({ userId: userId, householdId: household!.id, role: 'admin' });
         } else if (context.flow === 'invite') {
           if (token.purpose !== 'invite' || !token.householdId || token.email !== context.email) throw new AccountError('invalid_or_expired_link');
-          await tx.insert(users).values({ id: userId, email: context.email!, name: context.name!, language: context.language ?? 'en', emailVerifiedAt: new Date() });
+          await tx.insert(users).values({ id: userId, email: context.email!, name: context.name!, language: context.language ?? 'en', emailVerifiedAt: token.verifiesEmail ? new Date() : null });
           await tx.insert(memberships).values({ userId: userId, householdId: token.householdId, role: token.role ?? 'member' });
         } else {
           if (token.purpose !== 'recovery' || token.userId !== userId) throw new AccountError('invalid_or_expired_link');
@@ -159,6 +159,21 @@ export class AccountService {
       return this.session(tx, credential.userId);
     });
   }
+  async createInvitation(actor: Actor, householdId: string, email: string, role: 'admin' | 'member', delivery: 'email' | 'code') {
+    recent(actor);
+    return this.db.transaction(async (tx) => {
+      await lockAccounts(tx);
+      await householdAccess(tx, actor, householdId, true);
+      const token = randomToken();
+      const expiresAt = new Date(Date.now() + (delivery === 'code' ? 30_000 : 48 * 3600_000));
+      await tx.insert(tokens).values({
+        id: digest(token), purpose: 'invite', householdId, email, role, expiresAt,
+        verifiesEmail: delivery === 'email',
+      });
+      await tx.insert(securityEvents).values({ actorId: actor.user.id, action: delivery === 'code' ? 'invitation_code_issued' : 'invitation_issued' });
+      return { token, expiresAt };
+    });
+  }
   async acceptInvite(tokenValue: string, actor: Actor) {
     return this.db.transaction(async (tx) => {
       await lockAccounts(tx);
@@ -166,7 +181,8 @@ export class AccountService {
       if (token.purpose !== 'invite' || !token.householdId || token.email !== actor.user.email) throw new AccountError('invitation_account_mismatch', 403);
       // Re-accepting an invitation must not silently change an existing role.
       await tx.insert(memberships).values({ householdId: token.householdId, userId: actor.user.id, role: token.role ?? 'member' }).onConflictDoNothing();
-      await tx.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, actor.user.id));
+      // A hand-delivered code never proves control of an email inbox.
+      if (token.verifiesEmail) await tx.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, actor.user.id));
       await tx.update(tokens).set({ usedAt: new Date() }).where(eq(tokens.id, token.id));
     });
   }

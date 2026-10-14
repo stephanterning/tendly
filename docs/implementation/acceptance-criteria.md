@@ -15,6 +15,8 @@ These scenarios define **observable behavior**. Use automated coverage for the m
 
 **Given** SMTP is configured by a deployment administrator using the admin UI and a test email succeeds, **when** Admin invites a member by email, **then** the user can register a passkey without a password. A user who loses a passkey can recover through a single-use short-lived verified-email link and add a new passkey; recovery does not create a password login. Admin-only actions are denied to Members. CLI emergency recovery works when email/UI is unavailable.
 
+**Without SMTP**, a household Admin can generate and copy a code for an email/role. The code permits one successful join within 30 seconds; concurrent replay and expired redemption fail. It never verifies the recipient email or enables email recovery on its own. Members and unrelated deployment administrators cannot issue codes.
+
 ### AC-03 — Household isolation
 
 **Given** user A belongs only to household A, **when** they forge task IDs, file IDs, dependency IDs, query scopes, WebSocket subscriptions or write payloads belonging to household B, **then** no household-B data is disclosed or modified. Cross-household parenting/dependency/relations are denied, including in bulk operations and worker jobs.

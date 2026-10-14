@@ -60,3 +60,7 @@ code { display: block; overflow-wrap: anywhere; background: var(--tint); padding
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 @media (max-width: 720px) { .topbar { padding: 1rem; } .settings-layout { grid-template-columns: 1fr; margin: 1rem auto; padding: 0 1rem; gap: .75rem; } aside nav { display: flex; overflow-x: auto; margin-top: .75rem; padding-bottom: .4rem; } aside nav button { white-space: nowrap; } .stage-note { margin: .5rem 0; } .panel { padding: 1.2rem; } .members-list>li { align-items: flex-start; flex-wrap: wrap; } .auth-layout { margin: 2vh auto; padding: 1rem; } .auth-card { padding: 1.5rem; } }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+
+.code-entry { margin-top: 1rem; }
+.code-entry summary { min-height: 44px; padding-block: .65rem; cursor: pointer; color: var(--accent); }
+.invitation-code { border-top: 1px solid var(--line); margin-top: 1rem; padding-top: .5rem; overflow-wrap: anywhere; }

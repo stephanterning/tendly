@@ -44,6 +44,6 @@ export function App() {
   async function refresh() { await queries.invalidateQueries({ queryKey: ['session'] }); await queries.invalidateQueries({ queryKey: ['status'] }); }
   if (status.isError || session.isError) return <main className="auth-layout"><section className="auth-card"><h1>Tendly</h1><p role="alert">{t('network_error')}</p><button onClick={() => { void status.refetch(); void session.refetch(); }}>{t('retry')}</button></section></main>;
   if (status.isPending || session.isPending) return <main className="auth-layout"><p role="status">{t('loading')}</p></main>;
-  if (account && link?.purpose !== 'recovery') return <Settings account={account} refresh={refresh} link={link} clearLink={() => setLink(null)} />;
-  return <Auth key={link?.token ?? 'login'} initialized={status.data.initialized} emailAvailable={status.data.emailAvailable} link={link} refresh={refresh} clearLink={() => setLink(null)} />;
+  if (account && link?.purpose !== 'recovery') return <Settings account={account} refresh={refresh} link={link} useInvitation={(token) => setLink({ purpose: 'invite', token })} clearLink={() => setLink(null)} />;
+  return <Auth key={link?.token ?? 'login'} initialized={status.data.initialized} emailAvailable={status.data.emailAvailable} link={link} refresh={refresh} useInvitation={(token) => setLink({ purpose: 'invite', token })} clearLink={() => setLink(null)} />;
 }

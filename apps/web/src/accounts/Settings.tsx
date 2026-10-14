@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Fingerprint, House, LogOut, Mail, ShieldCheck, UserRound, UsersRound } from 'lucide-react';
 import type { Account } from '@tendly/shared';
+import { InvitationCodeEntry, InvitePanel } from './Invitations.js';
 import { api, result } from './api.js';
 import { enroll, errorKey, signIn, type EntryLink } from './Auth.js';
 
 type Run = (action: () => Promise<unknown>, message?: string) => Promise<void>;
-export function Settings({ account, refresh, link, clearLink }: { account: Account; refresh: () => Promise<void>; link: EntryLink; clearLink: () => void }) {
+export function Settings({ account, refresh, link, clearLink, useInvitation }: { account: Account; refresh: () => Promise<void>; link: EntryLink; clearLink: () => void; useInvitation: (code: string) => void }) {
   const { t, i18n } = useTranslation();
   const queries = useQueryClient();
   const [page, setPage] = useState('account');
@@ -42,7 +43,7 @@ export function Settings({ account, refresh, link, clearLink }: { account: Accou
         else await result(api.POST('/api/v1/auth/verify-email', { body: { token: link.token } }));
         clearLink();
       })}>{t(link.purpose === 'invite' ? 'join' : 'verify')}</button><button className="quiet" onClick={clearLink}>{t('cancel')}</button></section>}
-      {page === 'account' && <AccountPanel account={account} run={run} busy={busy} />}
+      {page === 'account' && <><AccountPanel account={account} run={run} busy={busy} /><section className="panel"><InvitationCodeEntry onUse={useInvitation} /></section></>}
       {page === 'members' && household && <MembersPanel key={household.id} household={household} run={run} busy={busy} />}
       {page === 'smtp' && account.deploymentAdmin && <SmtpPanel run={run} busy={busy} />}
     </main></div>
@@ -90,10 +91,7 @@ function MembersPanel({ household, run, busy }: { household: Account['households
         </div> : <span className="badge">{t(member.role)}</span>}
       </li>)}</ul>
     </section>
-    {household.role === 'admin' && <section className="panel"><h2>{t('invite')}</h2><p className="muted">{t('inviteText')}</p><form onSubmit={(event) => {
-      event.preventDefault(); const data = new FormData(event.currentTarget);
-      void run(() => result(api.POST('/api/v1/households/{id}/invitations', { params: { path: { id: household.id } }, body: { email: String(data.get('email')), role: data.get('role') as 'admin' | 'member' } })), 'emailSent');
-    }}><fieldset disabled={busy}><label>{t('email')}<input name="email" type="email" required /></label><label>{t('role')}<select name="role" defaultValue="member"><option value="member">{t('member')}</option><option value="admin">{t('admin')}</option></select></label><button className="primary" type="submit"><Mail size={17} />{t('sendInvite')}</button></fieldset></form></section>}
+    {household.role === 'admin' && <InvitePanel householdId={household.id} run={run} busy={busy} />}
   </>;
 }
 function SmtpPanel({ run, busy }: { run: Run; busy: boolean }) {

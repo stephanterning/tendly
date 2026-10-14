@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { browserSupportsWebAuthn, startAuthentication, startRegistration, type PublicKeyCredentialCreationOptionsJSON, type PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import { Fingerprint, ArrowLeft, Mail, House } from 'lucide-react';
 import type { RegistrationInput } from '@tendly/shared';
+import { InvitationCodeEntry } from './Invitations.js';
 import { api, result } from './api.js';
 
 export async function signIn() {
@@ -21,7 +22,7 @@ export function errorKey(error: unknown) {
   if (error instanceof Error) return ['NotAllowedError', 'AbortError'].includes(error.name) || error.name === 'WebAuthnError' ? 'passkey_cancelled' : error.message;
   return 'operation_failed';
 }
-export function Auth({ initialized, emailAvailable, link, refresh, clearLink }: { initialized: boolean; emailAvailable: boolean; link: EntryLink; refresh: () => Promise<void>; clearLink: () => void }) {
+export function Auth({ initialized, emailAvailable, link, refresh, clearLink, useInvitation }: { initialized: boolean; emailAvailable: boolean; link: EntryLink; refresh: () => Promise<void>; clearLink: () => void; useInvitation: (code: string) => void }) {
   const { t, i18n } = useTranslation();
   const [recover, setRecover] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -75,6 +76,7 @@ export function Auth({ initialized, emailAvailable, link, refresh, clearLink }: 
         </fieldset>
       </form>
       {!setup && !recover && !link && <><p className="small muted">{t('passkeyText')}</p><button className="text-button" onClick={() => setRecover(true)}>{t('recovery')}</button></>}
+      {!setup && !recover && !link && <InvitationCodeEntry onUse={useInvitation} />}
       {link?.purpose === 'invite' && <button className="text-button" disabled={busy} onClick={() => void run(async () => { await signIn(); await refresh(); })}>{t('signIn')}</button>}
       {(recover || link) && <button className="text-button" disabled={busy} onClick={() => { setRecover(false); clearLink(); setError(''); }}><ArrowLeft size={16} />{t('back')}</button>}
       {setup && <details className="small muted"><summary>{t('installationOwner')}</summary><code>docker compose exec api node apps/api/dist/accounts/cli.js setup-code</code></details>}
