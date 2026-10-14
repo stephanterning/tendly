@@ -35,12 +35,41 @@ jobs:
   containers:
     runs-on: ubuntu-latest
     env:
+      APP_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
       POSTGRES_PASSWORD: container-integration-only
       PUBLIC_ORIGIN: https://tendly.example.com
     steps:
       - uses: actions/checkout@v7.0.1
       - run: docker compose up --build --wait --wait-timeout 180
       - run: bash infrastructure/scripts/container-smoke.sh
+      - if: failure()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose down --volumes
+
+  accounts-browser:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: tendly-accounts-test
+      COMPOSE_FILE: compose.yaml:compose.test.yaml
+      APP_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
+      POSTGRES_PASSWORD: browser-integration-only
+      PUBLIC_ORIGIN: http://localhost:8081
+      TEST_ORIGIN: http://localhost:8081
+      HTTP_PORT: '8081'
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24.19.0'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: bash infrastructure/scripts/test-mailbox.sh
+      - run: docker compose up --build --wait --wait-timeout 180
+      - run: pnpm test:e2e
       - if: failure()
         run: docker compose logs --no-color
       - if: always()

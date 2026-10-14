@@ -1,0 +1,22 @@
+# Local/CI test mailbox only; not included in normal deployments.
+services:
+  api:
+    environment:
+      NODE_EXTRA_CA_CERTS: /test-certs/cert.pem
+    volumes:
+      - ./test-results/smtp/cert.pem:/test-certs/cert.pem:ro
+  worker:
+    environment:
+      NODE_EXTRA_CA_CERTS: /test-certs/cert.pem
+    volumes:
+      - ./test-results/smtp/cert.pem:/test-certs/cert.pem:ro
+  mailpit:
+    image: axllent/mailpit:v1.29
+    environment:
+      MP_SMTP_TLS_CERT: /test-certs/cert.pem
+      MP_SMTP_TLS_KEY: /test-certs/key.pem
+      MP_SMTP_REQUIRE_STARTTLS: 'true'
+    volumes:
+      - ./test-results/smtp:/test-certs:ro
+    ports:
+      - '127.0.0.1:8025:8025'
