@@ -1,4 +1,4 @@
-import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, doublePrecision, jsonb, primaryKey, index } from 'drizzle-orm/pg-core';
+import { pgTable, pgEnum, uuid, text, integer, boolean, timestamp, doublePrecision, jsonb, primaryKey, index, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { households, users } from '../accounts/schema.js';
 export const kindEnum = pgEnum('entity_kind', ['epic', 'place', 'resource', 'tag']);
 export const statusEnum = pgEnum('task_status', ['todo', 'in_progress', 'done']);
@@ -15,6 +15,8 @@ export const entities = pgTable('planning_entities', {
 export const tasks = pgTable('tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
   householdId: uuid('household_id').notNull().references(() => households.id, { onDelete: 'cascade' }),
+  parentId: uuid('parent_id').references((): AnyPgColumn => tasks.id, { onDelete: 'restrict' }),
+  inherit: jsonb('inherit').$type<('epicId' | 'high' | 'startDate' | 'deadlineDate' | 'assignees')[]>().notNull().default([]),
   title: text('title').notNull(), description: text('description').notNull().default(''),
   status: statusEnum('status').notNull().default('todo'), bucket: bucketEnum('planning_bucket').notNull().default('someday'),
   precedingColumn: text('preceding_column'),
@@ -30,7 +32,7 @@ export const tasks = pgTable('tasks', {
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   completedAt: timestamp('completed_at', { withTimezone: true }), completedBy: uuid('completed_by').references(() => users.id, { onDelete: 'set null' }),
   archivedAt: timestamp('archived_at', { withTimezone: true }), trashedAt: timestamp('trashed_at', { withTimezone: true }),
-}, t => [index('task_household_order_idx').on(t.householdId, t.order), index('task_epic_idx').on(t.epicId)]);
+}, t => [index('task_household_order_idx').on(t.householdId, t.order), index('task_epic_idx').on(t.epicId), index('task_parent_idx').on(t.parentId)]);
 export const taskEntities = pgTable('task_entities', {
   taskId: uuid('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
   entityId: uuid('entity_id').notNull().references(() => entities.id, { onDelete: 'cascade' }),
@@ -50,3 +52,17 @@ export const planningSettings = pgTable('planning_settings', {
   thresholds: jsonb('size_thresholds').$type<[number, number, number, number]>().notNull().default([60, 240, 480, 1440]),
   version: integer('version').notNull().default(1),
 });
+
+export const taskEntityExclusions = pgTable('task_entity_exclusions', {
+  taskId: uuid('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  entityId: uuid('entity_id').notNull().references(() => entities.id, { onDelete: 'cascade' }),
+}, t => [primaryKey({ columns: [t.taskId, t.entityId] })]);
+export const taskDependencies = pgTable('task_dependencies', {
+  blockedTaskId: uuid('blocked_task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  // Retain the identity after permanent deletion; a missing blocker is unresolved.
+  blockingTaskId: uuid('blocking_task_id').notNull(),
+}, t => [primaryKey({ columns: [t.blockedTaskId, t.blockingTaskId] }), index('dependency_blocker_idx').on(t.blockingTaskId)]);
+export const taskRelations = pgTable('task_relations', {
+  firstId: uuid('first_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  secondId: uuid('second_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+}, t => [primaryKey({ columns: [t.firstId, t.secondId] }), index('relation_second_idx').on(t.secondId)]);

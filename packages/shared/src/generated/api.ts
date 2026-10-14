@@ -3390,6 +3390,9 @@ export interface paths {
                 query?: {
                     view?: "now" | "board";
                     offset?: number;
+                    search?: string;
+                    includeSubtasks?: "true" | "false";
+                    parentId?: string;
                     limit?: number;
                 };
                 header?: never;
@@ -3408,6 +3411,14 @@ export interface paths {
                     content: {
                         "application/json": {
                             items: {
+                                /** Format: uuid */
+                                parentId: string | null;
+                                inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                                placeExclusions: string[];
+                                resourceExclusions: string[];
+                                tagExclusions: string[];
+                                blockers: string[];
+                                related: string[];
                                 title: string;
                                 description: string;
                                 /** @enum {string} */
@@ -3428,6 +3439,85 @@ export interface paths {
                                 places: string[];
                                 resources: string[];
                                 tags: string[];
+                                local: {
+                                    /** Format: uuid */
+                                    parentId: string | null;
+                                    inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                                    placeExclusions: string[];
+                                    resourceExclusions: string[];
+                                    tagExclusions: string[];
+                                    blockers: string[];
+                                    related: string[];
+                                    title: string;
+                                    description: string;
+                                    /** @enum {string} */
+                                    column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                    /** Format: uuid */
+                                    epicId: string | null;
+                                    high: boolean;
+                                    /** @enum {string|null} */
+                                    size: "XS" | "S" | "M" | "L" | "XL" | null;
+                                    estimateMinutes: number | null;
+                                    /** Format: date */
+                                    startDate: string | null;
+                                    startTime: string | null;
+                                    /** Format: date */
+                                    deadlineDate: string | null;
+                                    deadlineTime: string | null;
+                                    assignees: string[];
+                                    places: string[];
+                                    resources: string[];
+                                    tags: string[];
+                                };
+                                inheritedValues: {
+                                    /** Format: uuid */
+                                    epicId: string | null;
+                                    high: boolean;
+                                    /** Format: date */
+                                    startDate: string | null;
+                                    startTime: string | null;
+                                    /** Format: date */
+                                    deadlineDate: string | null;
+                                    deadlineTime: string | null;
+                                    assignees: string[];
+                                    places: string[];
+                                    resources: string[];
+                                    tags: string[];
+                                };
+                                ancestors: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                }[];
+                                relatedTasks: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                }[];
+                                children: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                }[];
+                                effectiveBlockers: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    title: string | null;
+                                    complete: boolean;
+                                    inherited: boolean;
+                                }[];
+                                progress: {
+                                    done: number;
+                                    total: number;
+                                };
+                                unfinishedDescendants: number;
+                                deadlineBeyondParent: boolean;
                                 /** Format: uuid */
                                 id: string;
                                 /** Format: uuid */
@@ -3549,6 +3639,14 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
+                        /** Format: uuid */
+                        parentId?: string | null;
+                        inherit?: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                        placeExclusions?: string[];
+                        resourceExclusions?: string[];
+                        tagExclusions?: string[];
+                        blockers?: string[];
+                        related?: string[];
                         title: string;
                         description?: string;
                         /** @enum {string} */
@@ -3570,6 +3668,7 @@ export interface paths {
                         resources?: string[];
                         tags?: string[];
                         confirmUnavailable?: boolean;
+                        confirmDescendants?: boolean;
                     };
                 };
             };
@@ -3581,6 +3680,14 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
+                            /** Format: uuid */
+                            parentId: string | null;
+                            inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                            placeExclusions: string[];
+                            resourceExclusions: string[];
+                            tagExclusions: string[];
+                            blockers: string[];
+                            related: string[];
                             title: string;
                             description: string;
                             /** @enum {string} */
@@ -3601,6 +3708,85 @@ export interface paths {
                             places: string[];
                             resources: string[];
                             tags: string[];
+                            local: {
+                                /** Format: uuid */
+                                parentId: string | null;
+                                inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                                placeExclusions: string[];
+                                resourceExclusions: string[];
+                                tagExclusions: string[];
+                                blockers: string[];
+                                related: string[];
+                                title: string;
+                                description: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                /** Format: uuid */
+                                epicId: string | null;
+                                high: boolean;
+                                /** @enum {string|null} */
+                                size: "XS" | "S" | "M" | "L" | "XL" | null;
+                                estimateMinutes: number | null;
+                                /** Format: date */
+                                startDate: string | null;
+                                startTime: string | null;
+                                /** Format: date */
+                                deadlineDate: string | null;
+                                deadlineTime: string | null;
+                                assignees: string[];
+                                places: string[];
+                                resources: string[];
+                                tags: string[];
+                            };
+                            inheritedValues: {
+                                /** Format: uuid */
+                                epicId: string | null;
+                                high: boolean;
+                                /** Format: date */
+                                startDate: string | null;
+                                startTime: string | null;
+                                /** Format: date */
+                                deadlineDate: string | null;
+                                deadlineTime: string | null;
+                                assignees: string[];
+                                places: string[];
+                                resources: string[];
+                                tags: string[];
+                            };
+                            ancestors: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                            }[];
+                            relatedTasks: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                            }[];
+                            children: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                            }[];
+                            effectiveBlockers: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string | null;
+                                complete: boolean;
+                                inherited: boolean;
+                            }[];
+                            progress: {
+                                done: number;
+                                total: number;
+                            };
+                            unfinishedDescendants: number;
+                            deadlineBeyondParent: boolean;
                             /** Format: uuid */
                             id: string;
                             /** Format: uuid */
@@ -3739,6 +3925,14 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
+                            /** Format: uuid */
+                            parentId: string | null;
+                            inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                            placeExclusions: string[];
+                            resourceExclusions: string[];
+                            tagExclusions: string[];
+                            blockers: string[];
+                            related: string[];
                             title: string;
                             description: string;
                             /** @enum {string} */
@@ -3759,6 +3953,85 @@ export interface paths {
                             places: string[];
                             resources: string[];
                             tags: string[];
+                            local: {
+                                /** Format: uuid */
+                                parentId: string | null;
+                                inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                                placeExclusions: string[];
+                                resourceExclusions: string[];
+                                tagExclusions: string[];
+                                blockers: string[];
+                                related: string[];
+                                title: string;
+                                description: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                /** Format: uuid */
+                                epicId: string | null;
+                                high: boolean;
+                                /** @enum {string|null} */
+                                size: "XS" | "S" | "M" | "L" | "XL" | null;
+                                estimateMinutes: number | null;
+                                /** Format: date */
+                                startDate: string | null;
+                                startTime: string | null;
+                                /** Format: date */
+                                deadlineDate: string | null;
+                                deadlineTime: string | null;
+                                assignees: string[];
+                                places: string[];
+                                resources: string[];
+                                tags: string[];
+                            };
+                            inheritedValues: {
+                                /** Format: uuid */
+                                epicId: string | null;
+                                high: boolean;
+                                /** Format: date */
+                                startDate: string | null;
+                                startTime: string | null;
+                                /** Format: date */
+                                deadlineDate: string | null;
+                                deadlineTime: string | null;
+                                assignees: string[];
+                                places: string[];
+                                resources: string[];
+                                tags: string[];
+                            };
+                            ancestors: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                            }[];
+                            relatedTasks: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                            }[];
+                            children: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                            }[];
+                            effectiveBlockers: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string | null;
+                                complete: boolean;
+                                inherited: boolean;
+                            }[];
+                            progress: {
+                                done: number;
+                                total: number;
+                            };
+                            unfinishedDescendants: number;
+                            deadlineBeyondParent: boolean;
                             /** Format: uuid */
                             id: string;
                             /** Format: uuid */
@@ -3885,6 +4158,14 @@ export interface paths {
                     "application/json": {
                         baseVersion: number;
                         changes: {
+                            /** Format: uuid */
+                            parentId?: string | null;
+                            inherit?: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                            placeExclusions?: string[];
+                            resourceExclusions?: string[];
+                            tagExclusions?: string[];
+                            blockers?: string[];
+                            related?: string[];
                             title?: string;
                             description?: string;
                             column?: ("someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done") | "reopen";
@@ -3906,6 +4187,7 @@ export interface paths {
                             tags?: string[];
                         };
                         confirmUnavailable?: boolean;
+                        confirmDescendants?: boolean;
                     };
                 };
             };
@@ -3917,6 +4199,14 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
+                            /** Format: uuid */
+                            parentId: string | null;
+                            inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                            placeExclusions: string[];
+                            resourceExclusions: string[];
+                            tagExclusions: string[];
+                            blockers: string[];
+                            related: string[];
                             title: string;
                             description: string;
                             /** @enum {string} */
@@ -3937,6 +4227,85 @@ export interface paths {
                             places: string[];
                             resources: string[];
                             tags: string[];
+                            local: {
+                                /** Format: uuid */
+                                parentId: string | null;
+                                inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                                placeExclusions: string[];
+                                resourceExclusions: string[];
+                                tagExclusions: string[];
+                                blockers: string[];
+                                related: string[];
+                                title: string;
+                                description: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                /** Format: uuid */
+                                epicId: string | null;
+                                high: boolean;
+                                /** @enum {string|null} */
+                                size: "XS" | "S" | "M" | "L" | "XL" | null;
+                                estimateMinutes: number | null;
+                                /** Format: date */
+                                startDate: string | null;
+                                startTime: string | null;
+                                /** Format: date */
+                                deadlineDate: string | null;
+                                deadlineTime: string | null;
+                                assignees: string[];
+                                places: string[];
+                                resources: string[];
+                                tags: string[];
+                            };
+                            inheritedValues: {
+                                /** Format: uuid */
+                                epicId: string | null;
+                                high: boolean;
+                                /** Format: date */
+                                startDate: string | null;
+                                startTime: string | null;
+                                /** Format: date */
+                                deadlineDate: string | null;
+                                deadlineTime: string | null;
+                                assignees: string[];
+                                places: string[];
+                                resources: string[];
+                                tags: string[];
+                            };
+                            ancestors: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                            }[];
+                            relatedTasks: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                            }[];
+                            children: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string;
+                                /** @enum {string} */
+                                column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                            }[];
+                            effectiveBlockers: {
+                                /** Format: uuid */
+                                id: string;
+                                title: string | null;
+                                complete: boolean;
+                                inherited: boolean;
+                            }[];
+                            progress: {
+                                done: number;
+                                total: number;
+                            };
+                            unfinishedDescendants: number;
+                            deadlineBeyondParent: boolean;
                             /** Format: uuid */
                             id: string;
                             /** Format: uuid */
@@ -4008,6 +4377,14 @@ export interface paths {
                             error: "task_conflict";
                             fields: string[];
                             current: {
+                                /** Format: uuid */
+                                parentId: string | null;
+                                inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                                placeExclusions: string[];
+                                resourceExclusions: string[];
+                                tagExclusions: string[];
+                                blockers: string[];
+                                related: string[];
                                 title: string;
                                 description: string;
                                 /** @enum {string} */
@@ -4028,6 +4405,85 @@ export interface paths {
                                 places: string[];
                                 resources: string[];
                                 tags: string[];
+                                local: {
+                                    /** Format: uuid */
+                                    parentId: string | null;
+                                    inherit: ("epicId" | "high" | "startDate" | "deadlineDate" | "assignees")[];
+                                    placeExclusions: string[];
+                                    resourceExclusions: string[];
+                                    tagExclusions: string[];
+                                    blockers: string[];
+                                    related: string[];
+                                    title: string;
+                                    description: string;
+                                    /** @enum {string} */
+                                    column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                    /** Format: uuid */
+                                    epicId: string | null;
+                                    high: boolean;
+                                    /** @enum {string|null} */
+                                    size: "XS" | "S" | "M" | "L" | "XL" | null;
+                                    estimateMinutes: number | null;
+                                    /** Format: date */
+                                    startDate: string | null;
+                                    startTime: string | null;
+                                    /** Format: date */
+                                    deadlineDate: string | null;
+                                    deadlineTime: string | null;
+                                    assignees: string[];
+                                    places: string[];
+                                    resources: string[];
+                                    tags: string[];
+                                };
+                                inheritedValues: {
+                                    /** Format: uuid */
+                                    epicId: string | null;
+                                    high: boolean;
+                                    /** Format: date */
+                                    startDate: string | null;
+                                    startTime: string | null;
+                                    /** Format: date */
+                                    deadlineDate: string | null;
+                                    deadlineTime: string | null;
+                                    assignees: string[];
+                                    places: string[];
+                                    resources: string[];
+                                    tags: string[];
+                                };
+                                ancestors: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                }[];
+                                relatedTasks: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                }[];
+                                children: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    title: string;
+                                    /** @enum {string} */
+                                    column: "someday" | "within_year" | "within_month" | "todo" | "in_progress" | "done";
+                                }[];
+                                effectiveBlockers: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    title: string | null;
+                                    complete: boolean;
+                                    inherited: boolean;
+                                }[];
+                                progress: {
+                                    done: number;
+                                    total: number;
+                                };
+                                unfinishedDescendants: number;
+                                deadlineBeyondParent: boolean;
                                 /** Format: uuid */
                                 id: string;
                                 /** Format: uuid */
