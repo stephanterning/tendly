@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
+import { taskJourney } from './tasks-journey.js';
 import { execFileSync } from 'node:child_process';
 
 const origin = process.env.TEST_ORIGIN ?? 'http://localhost:8081';
@@ -15,6 +16,10 @@ async function authenticator(context: BrowserContext, page: Page) {
     hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true,
   } });
 }
+async function settings(page: Page) {
+  await page.getByRole('navigation').getByRole('button', { name: 'More', exact: true }).filter({ visible: true }).click();
+  await page.getByRole('button', { name: 'Account & household', exact: true }).click();
+}
 async function mailLink(recipient: string, purpose: string) {
   let link = '';
   await expect.poll(async () => {
@@ -29,7 +34,7 @@ async function mailLink(recipient: string, purpose: string) {
   return link;
 }
 
-test('install, verify, invite, authenticate and recover with real WebAuthn verification', async ({ page, context, browser }) => {
+test('install, plan tasks, invite and recover with real WebAuthn verification', async ({ page, context, browser }) => {
   await authenticator(context, page);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Make yourself at home' })).toBeVisible();
@@ -40,6 +45,8 @@ test('install, verify, invite, authenticate and recover with real WebAuthn verif
   await page.getByLabel('Household name').fill('Our home');
   await page.getByLabel('Household timezone').fill('Europe/Stockholm');
   await page.getByRole('button', { name: 'Create account with a passkey' }).click();
+  await taskJourney(page);
+  await settings(page);
   await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   const offlineContext = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US', permissions: ['clipboard-read', 'clipboard-write'] });
   const offline = await offlineContext.newPage();
@@ -57,6 +64,7 @@ test('install, verify, invite, authenticate and recover with real WebAuthn verif
   await offline.getByRole('button', { name: 'Use invitation code', exact: true }).click();
   await offline.getByLabel('Your name').fill('Robin');
   await offline.getByRole('button', { name: 'Join household', exact: true }).click();
+  await settings(offline);
   await expect(offline.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   const offlineAccount = (await (await offlineContext.request.get(origin + '/api/v1/auth/session')).json()).account;
   expect(offlineAccount.emailVerified).toBe(false);
@@ -87,6 +95,7 @@ test('install, verify, invite, authenticate and recover with real WebAuthn verif
   await member.goto(invitation);
   await member.getByLabel('Your name').fill('Sam');
   await member.getByRole('button', { name: 'Join household', exact: true }).click();
+  await settings(member);
   await expect(member.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   await expect(member.getByRole('button', { name: 'Email settings' })).toHaveCount(0);
   expect((await mobile.request.get(origin + '/api/v1/settings/smtp')).status()).toBe(403);
@@ -106,10 +115,12 @@ test('install, verify, invite, authenticate and recover with real WebAuthn verif
   await expect(recovered.getByRole('status')).toContainText('If a verified account');
   await recovered.goto(await mailLink('member@example.test', 'recovery'));
   await recovered.getByRole('button', { name: 'Create a new passkey', exact: true }).click();
+  await settings(recovered);
   await expect(recovered.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   expect((await (await mobile.request.get(origin + '/api/v1/auth/session')).json()).account).toBeNull();
   await recovered.getByRole('button', { name: 'Sign out', exact: true }).click();
   await recovered.getByRole('button', { name: 'Sign in with a passkey', exact: true }).click();
+  await settings(recovered);
   await expect(recovered.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   // CLI recovery remains available when SMTP is unavailable.
   await page.getByRole('button', { name: 'Email settings', exact: true }).click();
@@ -118,6 +129,7 @@ test('install, verify, invite, authenticate and recover with real WebAuthn verif
   await expect(page.getByRole('status')).toContainText('Changes saved');
   await recovered.goto(cli('recover', 'owner@example.test'));
   await recovered.getByRole('button', { name: 'Create a new passkey', exact: true }).click();
+  await settings(recovered);
   await expect(recovered.getByRole('button', { name: 'Email settings', exact: true })).toBeVisible();
   expect((await (await context.request.get(origin + '/api/v1/auth/session')).json()).account).toBeNull();
   await recovery.close(); await mobile.close();

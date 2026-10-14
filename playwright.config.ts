@@ -5,5 +5,5 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   outputDir: 'test-results/browser',
-  use: { baseURL: process.env.TEST_ORIGIN ?? 'http://localhost:8081', locale: 'en-US', trace: 'off' },
+  use: { actionTimeout: 15_000, baseURL: process.env.TEST_ORIGIN ?? 'http://localhost:8081', locale: 'en-US', trace: 'off' },
 });
