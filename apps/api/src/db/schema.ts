@@ -6,3 +6,6 @@ export const installation = pgTable('installation', {
 });
 export * from '../accounts/schema.js';
 export * from '../tasks/schema.js';
+export * from '../planning/schema.js';
+export * from '../lifecycle/schema.js';
+export * from '../content/schema.js';

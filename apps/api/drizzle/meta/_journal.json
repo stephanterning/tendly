@@ -36,6 +36,41 @@
       "when": 1792001240021,
       "tag": "0004_brainy_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792011422429,
+      "tag": "0005_giant_lilandra",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792011813690,
+      "tag": "0006_romantic_wind_dancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792012233995,
+      "tag": "0007_cynical_vapor",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792012303285,
+      "tag": "0008_perfect_ikaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792012641120,
+      "tag": "0009_true_crystal",
+      "breakpoints": true
     }
   ]
 }

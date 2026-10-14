@@ -21,7 +21,7 @@ export const registrationInput = z.discriminatedUnion('flow', [
 ]);
 export const verificationInput = z.object({ ceremonyId: z.uuid(), response: z.record(z.string(), z.unknown()), name: nameSchema.default('Passkey') });
 export const accountSchema = z.object({
-  id: z.uuid(), name: z.string(), email: z.string(), emailVerified: z.boolean(), deploymentAdmin: z.boolean(), language: z.enum(['en', 'sv']), theme: z.enum(['system', 'light', 'dark']),
+  id: z.uuid(), avatar: z.string().nullable(), name: z.string(), email: z.string(), emailVerified: z.boolean(), deploymentAdmin: z.boolean(), language: z.enum(['en', 'sv']), theme: z.enum(['system', 'light', 'dark']),
   households: z.array(z.object({ id: z.uuid(), name: z.string(), timezone: z.string(), role: roleSchema })),
 });
 export const sessionSchema = z.object({ account: accountSchema.nullable() });

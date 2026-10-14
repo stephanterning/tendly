@@ -33,6 +33,7 @@ export const taskPatchSchema = z.object({ baseVersion: z.number().int().min(1), 
 export const inheritedValuesSchema = taskFields.pick({ epicId: true, high: true, startDate: true, startTime: true, deadlineDate: true, deadlineTime: true, assignees: true, places: true, resources: true, tags: true }).extend({ assignees: z.array(z.uuid()), places: z.array(z.uuid()), resources: z.array(z.uuid()), tags: z.array(z.uuid()) });
 export const taskLinkSchema = z.object({ id: z.uuid(), title: z.string(), column: columnSchema });
 export const taskSchema = taskFields.extend({
+  recurrenceTemplateId: z.uuid().nullable(),
   local: taskFields, inheritedValues: inheritedValuesSchema,
   places: z.array(z.uuid()), resources: z.array(z.uuid()), tags: z.array(z.uuid()), assignees: z.array(z.uuid()),
   ancestors: z.array(taskLinkSchema), relatedTasks: z.array(taskLinkSchema), children: z.array(taskLinkSchema),
