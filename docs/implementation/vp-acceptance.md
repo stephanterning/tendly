@@ -41,6 +41,8 @@ Verified locally on 2026-10-14:
   accelerated journey pauses between planning and account workflows.
 - OpenAPI regeneration produces no contract drift. Dependency audit reported no known
   vulnerabilities; the license inventory contains no unknown licenses.
+- PWA verification passed: the service worker controls navigation, offline navigation
+  shows the reconnect screen, and its cache contains no API/session/file data.
 - Desktop/mobile and light/dark screenshots were inspected. The final desktop board
   preserves readable card widths with horizontal overflow; touch completion and move
   menus have separate targets.
