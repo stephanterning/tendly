@@ -5,3 +5,4 @@ export const installation = pgTable('installation', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 export * from '../accounts/schema.js';
+export * from '../tasks/schema.js';

@@ -1,3 +1,4 @@
+import { tasks, taskAssignees, taskActivities } from '../tasks/schema.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq, gt, isNull, lt } from 'drizzle-orm';
 import {
@@ -199,6 +200,7 @@ export class AccountService {
   async changeMember(current: Actor, params: { id: string; userId: string }, role: 'admin' | 'member' | null) {
     await this.db.transaction(async (tx) => {
       await lockAccounts(tx);
+      await tx.select().from(households).where(eq(households.id, params.id)).for('update');
       await householdAccess(tx, current, params.id, true);
       const members = await tx.select().from(memberships).where(eq(memberships.householdId, params.id));
       const target = members.find((member) => member.userId === params.userId);
@@ -206,7 +208,17 @@ export class AccountService {
       if (target.role === 'admin' && role !== 'admin' && members.filter((member) => member.role === 'admin').length === 1) throw new AccountError('keep_one_household_admin', 409);
       const scope = and(eq(memberships.householdId, params.id), eq(memberships.userId, params.userId));
       if (role) await tx.update(memberships).set({ role }).where(scope);
-      else await tx.delete(memberships).where(scope);
+      else {
+        // Removing a member also releases their assignments; revision guards stop
+        // an open editor from accidentally restoring that obsolete assignment.
+        const assigned = await tx.select({ task: tasks }).from(tasks).innerJoin(taskAssignees, eq(taskAssignees.taskId, tasks.id)).where(and(eq(tasks.householdId, params.id), eq(taskAssignees.userId, params.userId)));
+        for (const { task } of assigned) {
+          await tx.delete(taskAssignees).where(and(eq(taskAssignees.taskId, task.id), eq(taskAssignees.userId, params.userId)));
+          await tx.update(tasks).set({ version: task.version + 1, fieldVersions: { ...task.fieldVersions, assignees: task.version + 1 }, updatedAt: new Date() }).where(eq(tasks.id, task.id));
+          await tx.insert(taskActivities).values({ taskId: task.id, actorId: current.user.id, version: task.version + 1, fields: ['assignees'] });
+        }
+        await tx.delete(memberships).where(scope);
+      }
       await tx.insert(securityEvents).values({ actorId: current.user.id, subjectId: target.userId, action: role ? 'household_role_changed' : 'household_member_removed' });
     });
   }
