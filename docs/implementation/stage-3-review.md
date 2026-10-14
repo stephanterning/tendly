@@ -55,3 +55,14 @@ Stage 6 adds templates, recurrence, archive and Trash. Stage 7 adds rich descrip
 comments/files/search, full WebSocket reconciliation and expanded Undo/conflict work.
 Stage 8 completes PWA/device, accessibility, operations and the full VP acceptance gate.
 No M1 requirement has been moved to a later milestone.
+
+## Owner review corrections
+
+Place management now includes an optional interactive map with draggable pin,
+visible radius, slider and manual coordinate fallback. The entire bundled Lucide
+catalog is searchable, with two additional utility trailer variants. Icon results
+load in batches and SVG modules load on demand. These corrections remain in Stage 3;
+Board drag/drop remains part of the approved Stage 5 checkpoint.
+
+The browser journey verifies full-catalog search, Swedish trailer aliases, map pin
+placement, coordinate/radius persistence, cancelled edits and tile failure fallback.

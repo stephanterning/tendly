@@ -199,3 +199,14 @@ p { margin: .65rem 0; }
 
 .mobile-household-switch { display: none; }
 @media (max-width: 720px) { .mobile-household-switch { display: flex; } }
+
+/* Keep map panes inside the dialog stacking context, including on mobile. */
+.place-map { height: 300px; width: 100%; isolation: isolate; border-radius: 12px; background: #dfe9ed; }
+.place-map.leaflet-container .leaflet-control-zoom a { width: 44px; height: 44px; line-height: 44px; }
+.place-map .leaflet-control-attribution { color: #242424; background: #ffffffee; }
+.place-map .leaflet-control-attribution a { color: #075a9a; }
+.place-pin { background: none; border: 0; }
+.place-pin span { display: block; width: 28px; height: 28px; border: 3px solid white; border-radius: 50% 50% 50% 0; background: #087fff; transform: rotate(-45deg); box-shadow: 0 2px 6px #0006; }
+.place-location { border-block: 1px solid var(--border); padding-block: 1rem; margin-block: 1rem; }
+.place-location input[type="range"] { width: 100%; padding: 0; accent-color: #087fff; }
+.icon-picker { max-height: 240px; overflow-y: auto; padding: 3px; }

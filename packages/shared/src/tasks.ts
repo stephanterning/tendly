@@ -11,7 +11,8 @@ export const palette = [
   { id: 'pink', hue: 345 }, { id: 'brown', hue: 65 }, { id: 'slate', hue: 250 },
 ] as const;
 export const colorSchema = z.enum(['red', 'orange', 'amber', 'green', 'teal', 'cyan', 'blue', 'indigo', 'purple', 'pink', 'brown', 'slate']);
-export const iconNames = ['house', 'sprout', 'car', 'wrench', 'cat', 'box', 'fan', 'droplets', 'heart', 'shopping-bag', 'book-open', 'briefcase', 'map-pin', 'tag', 'hammer', 'bike', 'coffee', 'laptop', 'paintbrush', 'utensils', 'bed', 'tree-pine', 'sun', 'star'] as const;
+import { iconNames } from './icons.js';
+export { iconNames } from './icons.js';
 export const iconSchema = z.enum(iconNames);
 const ids = z.array(z.uuid()).max(100);
 export const taskFields = z.object({

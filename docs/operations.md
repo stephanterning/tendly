@@ -138,3 +138,8 @@ The recipient address remains unverified. Verify it separately after configuring
 to enable email recovery. The UI shows remaining time and lets you select/copy manually
 if browser clipboard access is denied. A browser cannot retract a code already copied
 to the clipboard, but server expiration and one-use consumption remain authoritative.
+
+## Place maps
+
+See [optional place maps](operations/maps.md) for tile-provider configuration,
+self-hosted tiles, attribution and network behavior.

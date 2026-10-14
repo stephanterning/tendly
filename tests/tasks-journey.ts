@@ -8,6 +8,7 @@ export async function taskJourney(page: Page) {
   await page.getByRole('button', { name: 'red', exact: true }).click();
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await placeAndIconJourney(page);
   await page.getByRole('navigation').getByRole('button', { name: 'Now', exact: true }).filter({ visible: true }).click();
   await page.keyboard.press('n');
   await page.getByLabel('What needs doing?', { exact: true }).fill('Clean the gutters');
@@ -77,5 +78,62 @@ export async function taskJourney(page: Page) {
   await expect(page.getByRole('dialog', { name: 'Task details' })).toBeVisible();
   await page.screenshot({ path: 'test-results/task-mobile-dark.png', fullPage: true });
   await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.setViewportSize({ width: 1280, height: 900 });
+}
+
+async function placeAndIconJourney(page: Page) {
+  await page.getByRole('button', { name: 'Places', exact: true }).click();
+  await page.getByRole('button', { name: 'Add Place', exact: true }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Workshop');
+  await page.getByLabel('Find an icon').fill('trailer');
+  await expect(page.getByRole('group', { name: 'Icon', exact: true }).getByRole('button')).toHaveCount(3);
+  await page.getByRole('button', { name: 'covered trailer', exact: true }).click();
+  await page.getByLabel('Find an icon').fill('släp');
+  await expect(page.getByRole('group', { name: 'Icon', exact: true }).getByRole('button')).toHaveCount(2);
+  // The searchable catalog includes icons beyond the initially displayed page.
+  await page.getByLabel('Find an icon').fill('telescope');
+  await expect(page.getByRole('button', { name: 'telescope', exact: true }).locator('svg')).toBeVisible();
+  await page.getByLabel('Find an icon').fill('trailer');
+  await page.getByLabel('Latitude', { exact: true }).fill('59.3293');
+  await page.getByLabel('Longitude', { exact: true }).fill('18.0686');
+  // CI never depends on a public tile service. Failure must leave geodata editable.
+  await page.route('https://tile.openstreetmap.org/**', route => route.abort());
+  await page.getByRole('button', { name: 'Choose on map', exact: true }).click();
+  const map = page.getByRole('region', { name: 'Location map', exact: true });
+  await expect(map).toBeVisible();
+  await map.click({ position: { x: 160, y: 130 } });
+  await expect(page.getByLabel('Latitude', { exact: true })).not.toHaveValue('59.3293');
+  const pin = await map.locator('.place-pin').boundingBox();
+  const beforeDrag = await page.getByLabel('Latitude', { exact: true }).inputValue();
+  expect(pin).not.toBeNull();
+  await page.mouse.move(pin!.x + 14, pin!.y + 14);
+  await page.mouse.down();
+  await page.mouse.move(pin!.x + 45, pin!.y + 40, { steps: 6 });
+  await page.mouse.up();
+  await expect(page.getByLabel('Latitude', { exact: true })).not.toHaveValue(beforeDrag);
+  await page.getByRole('slider', { name: 'Adjust radius' }).fill('300');
+  await expect(page.getByLabel('Radius (metres)', { exact: true })).toHaveValue('300');
+  await page.getByLabel('Radius (metres)', { exact: true }).fill('250');
+  await page.getByRole('button', { name: 'Show selected area', exact: true }).click();
+  await expect(page.getByText('Some map tiles could not load.', { exact: false })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await map.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/place-map-mobile.png' });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const lat = await page.getByLabel('Latitude', { exact: true }).inputValue();
+  const lng = await page.getByLabel('Longitude', { exact: true }).inputValue();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Workshop', exact: true }).click();
+  await expect(page.getByLabel('Latitude', { exact: true })).toHaveValue(lat);
+  await expect(page.getByLabel('Longitude', { exact: true })).toHaveValue(lng);
+  await expect(page.getByLabel('Radius (metres)', { exact: true })).toHaveValue('250');
+  await expect(page.getByRole('button', { name: 'covered trailer', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Remove coordinates and radius', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Workshop', exact: true }).click();
+  await expect(page.getByLabel('Latitude', { exact: true })).toHaveValue(lat);
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.unroute('https://tile.openstreetmap.org/**');
   await page.setViewportSize({ width: 1280, height: 900 });
 }
