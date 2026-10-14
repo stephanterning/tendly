@@ -1,6 +1,6 @@
 # Tendly — Stage 1 review
 
-Status: implementation complete; CI database/container verification pending.
+Status: Stage 1 implemented and verified; ready for owner review.
 
 ## Delivered
 
@@ -16,10 +16,24 @@ Status: implementation complete; CI database/container verification pending.
 
 ## Verification
 
-Local build, lint, typecheck and three focused HTTP/configuration tests pass. Contract
-and migration generation succeed. The local host has no Docker/PostgreSQL runtime;
-real database and container checks are being run in GitHub CI. No task/authentication
-features are claimed complete. AC-24 restoration remains a final VP gate.
+[CI passed for implementation commit 920eb49](https://github.com/stephanterning/tendly/actions/runs/38580382184):
+
+- Build, lint, strict typecheck and three focused HTTP/configuration tests.
+- OpenAPI regeneration with no drift in committed client contracts.
+- Real PostgreSQL concurrent migration runners and repeat-application persistence.
+- Fresh Compose build/start, API/worker/web readiness, and restart persistence of both
+  database records and file bytes written by the non-root API user.
+
+Local checks also pass. Runtime dependency audit reports zero known vulnerabilities;
+303 installed dependency license declarations are inventoried. The supplied design
+reference is byte-identical to the original. A container startup hook-ordering bug
+found by CI was corrected and covered by the application teardown test.
+
+The local Mac has no Docker/PostgreSQL runtime, so container verification ran on Linux
+amd64 in GitHub CI. The release workflow prepares amd64/arm64 images; arm64 execution,
+actual GHCR publication and a real HTTPS/physical-device installation have not yet
+been exercised. No release tag or production deployment was created. No task or account
+features are claimed complete. AC-24 full restoration remains a final VP gate.
 
 ## Review points
 
