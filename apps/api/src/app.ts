@@ -6,11 +6,13 @@ import { logRedaction } from './logging.js';
 
 interface AppOptions {
   checkDatabase: () => Promise<void>;
+  closeDatabase?: () => Promise<void>;
   version?: string;
   logLevel?: string;
 }
 export async function buildApp(options: AppOptions) {
   const app = Fastify({ logger: options.logLevel ? { level: options.logLevel, redact: logRedaction } : false, logController: new LogController({ disableRequestLogging: true }) }).withTypeProvider<ZodTypeProvider>();
+  if (options.closeDatabase) app.addHook('onClose', options.closeDatabase);
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
   await app.register(swagger, {
