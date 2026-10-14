@@ -23,9 +23,8 @@ supports them. PUBLIC_ORIGIN is the authoritative origin for later WebAuthn, not
 forwarded host input. Use a stable hostname; changing it impacts passkeys.
 
 Compose starts PostgreSQL, waits for health, runs the locked migration job once, then
-starts API/worker/web. Named volumes persist PostgreSQL and attachment storage. No
-attachment uploads exist yet; writable attachment ownership is established with the
-file-service implementation before enabling uploads.
+starts API/worker/web. Named volumes persist PostgreSQL and attachment storage. The attachment volume is writable by the non-root API user and its persistence is
+checked in CI. Attachment upload/download routes arrive in Stage 7.
 
 Check `docker compose ps` and `docker compose logs`. Health endpoints separate process
 liveness from database readiness. Worker health requires a recent successful DB check.

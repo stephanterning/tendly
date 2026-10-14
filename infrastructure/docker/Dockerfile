@@ -7,6 +7,7 @@ RUN pnpm build
 
 FROM build AS api
 ENV NODE_ENV=production
+RUN mkdir -p /data/attachments && chown node:node /data/attachments
 USER node
 EXPOSE 3000
 CMD ["pnpm", "--filter", "@tendly/api", "exec", "node", "dist/main.js"]
