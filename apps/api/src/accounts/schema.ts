@@ -6,6 +6,7 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey(),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
+  avatar: text('avatar'),
   emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
   deploymentAdmin: boolean('deployment_admin').notNull().default(false),
   language: text('language').notNull().default('en'),
@@ -13,6 +14,7 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 export const households = pgTable('households', {
+  revision: bigint('revision', { mode: 'number' }).notNull().default(0),
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   timezone: text('timezone').notNull(),

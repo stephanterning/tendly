@@ -31,6 +31,7 @@ export const tasks = pgTable('tasks', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   completedAt: timestamp('completed_at', { withTimezone: true }), completedBy: uuid('completed_by').references(() => users.id, { onDelete: 'set null' }),
+  trashRootId: uuid('trash_root_id'),
   archivedAt: timestamp('archived_at', { withTimezone: true }), trashedAt: timestamp('trashed_at', { withTimezone: true }),
 }, t => [index('task_household_order_idx').on(t.householdId, t.order), index('task_epic_idx').on(t.epicId), index('task_parent_idx').on(t.parentId)]);
 export const taskEntities = pgTable('task_entities', {
