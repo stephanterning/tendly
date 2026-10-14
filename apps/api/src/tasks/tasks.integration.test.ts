@@ -50,7 +50,7 @@ beforeAll(async () => {
 }, 30000);
 afterAll(async () => {
   await app?.close(); await pool?.end();
-  if (root) { await root.query(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`); await root.end(); }
+  if (root) { await root.query(`DROP DATABASE IF EXISTS "${databaseName}"`); await root.end(); }
 });
 it('scopes every task/entity request and rejects foreign references and CSRF', async () => {
   const actor = (await service.findSession(sessionA))!;

@@ -28,7 +28,19 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
   const ceremonyName = secure ? '__Host-tendly-ceremony' : 'tendly_ceremony';
   const cookieOptions = { path: '/', httpOnly: true, secure, sameSite: 'lax' as const };
   await app.register(cookie);
-  await app.register(rateLimit, { hook: 'preHandler', max: 120, timeWindow: '1 minute' });
+  const actors = new WeakMap<FastifyRequest, ReturnType<typeof service.findSession>>();
+  const actor = (request: FastifyRequest) => {
+    let found = actors.get(request);
+    if (!found) { found = service.findSession(request.cookies[sessionName]); actors.set(request, found); }
+    return found;
+  };
+  // Autosave/refetch traffic must not consume another household member's allowance.
+  // Only a validated session gets a user bucket; arbitrary cookies cannot evade IP limits.
+  await app.register(rateLimit, {
+    hook: 'preHandler', timeWindow: '1 minute',
+    max: async request => (await actor(request)) ? 300 : 120,
+    keyGenerator: async request => { const current = await actor(request); return current ? 'user:' + current.user.id : 'ip:' + request.ip; },
+  });
   await app.register(websocket);
   app.addHook('onRequest', async (request, reply) => {
     reply.header('Cache-Control', 'no-store');
@@ -45,7 +57,6 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
     request.log.error({ code: 'account_operation_failed' }, 'Account operation failed');
     return reply.code(500).send({ error: 'operation_failed' });
   });
-  const actor = (request: FastifyRequest) => service.findSession(request.cookies[sessionName]);
   const setSession = async (reply: FastifyReply, request: FastifyRequest, bearer: string) => {
     // Rotate the caller's old session on successful authentication/enrollment.
     const old = request.cookies[sessionName];
