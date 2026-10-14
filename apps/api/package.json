@@ -14,22 +14,31 @@
     "db:migrate": "tsx src/db/migrate-cli.ts"
   },
   "dependencies": {
-    "@tendly/shared": "workspace:*",
-    "fastify": "5.12.7",
+    "@fastify/cookie": "11.1.3",
+    "@fastify/rate-limit": "11.2.1",
     "@fastify/swagger": "9.9.2",
-    "fastify-type-provider-zod": "6.1.0",
-    "zod": "4.6.7",
-    "pg": "8.23.1",
+    "@fastify/websocket": "11.3.4",
+    "@simplewebauthn/server": "14.0.3",
+    "@tendly/shared": "workspace:*",
     "drizzle-orm": "0.45.4",
-    "pino": "10.4.0"
+    "fastify": "5.12.7",
+    "fastify-type-provider-zod": "6.1.0",
+    "nodemailer": "10.1.0",
+    "pg": "8.23.1",
+    "pino": "10.4.0",
+    "zod": "4.6.7",
+    "pg-boss": "12.37.1"
   },
   "exports": {
     "./config": "./dist/config.js",
-    "./logging": "./dist/logging.js"
+    "./logging": "./dist/logging.js",
+    "./mail-worker": "./dist/accounts/mail-worker.js"
   },
   "devDependencies": {
+    "@types/nodemailer": "8.0.2",
     "@types/pg": "8.23.1",
-    "tsx": "4.23.15",
-    "drizzle-kit": "0.31.11"
+    "@types/ws": "8.18.2",
+    "drizzle-kit": "0.31.11",
+    "tsx": "4.23.15"
   }
 }

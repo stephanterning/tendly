@@ -1,3 +1,6 @@
+import { registerAccountRoutes } from './accounts/routes.js';
+import type { AccountService } from './accounts/service.js';
+import type { MailService } from './accounts/mail.js';
 import Fastify, { LogController } from 'fastify';
 import swagger from '@fastify/swagger';
 import { jsonSchemaTransform, serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fastify-type-provider-zod';
@@ -5,6 +8,7 @@ import { healthSchema, versionSchema } from '@tendly/shared';
 import { logRedaction } from './logging.js';
 
 interface AppOptions {
+  accounts?: { service: AccountService; mail: MailService };
   checkDatabase: () => Promise<void>;
   closeDatabase?: () => Promise<void>;
   version?: string;
@@ -33,6 +37,7 @@ export async function buildApp(options: AppOptions) {
     }
   });
   app.get('/api/v1/version', { schema: { operationId: 'getVersion', response: { 200: versionSchema } } }, async () => ({ name: 'Tendly' as const, version: options.version ?? '0.0.0-dev' }));
+  if (options.accounts) await registerAccountRoutes(app, options.accounts.service, options.accounts.mail);
   await app.ready();
   return app;
 }

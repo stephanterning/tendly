@@ -1,5 +1,6 @@
 import { z } from 'zod';
 const schema = z.object({
+  APP_ENCRYPTION_KEY: z.string().regex(/^[0-9a-f]{64}$/i),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.url().refine((value) => URL.canParse(value) && ['postgres:', 'postgresql:'].includes(new URL(value).protocol)),
   PUBLIC_ORIGIN: z.url().refine((value) => {
@@ -23,5 +24,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   if (origin.protocol !== 'https:' && !(config.NODE_ENV !== 'production' && origin.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname))) {
     throw new Error('PUBLIC_ORIGIN must use HTTPS (HTTP localhost is development-only)');
   }
-  return config;
+  // Browser Origin and WebAuthn use the canonical origin, without a trailing slash.
+  return { ...config, PUBLIC_ORIGIN: origin.origin };
 }

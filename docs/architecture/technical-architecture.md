@@ -181,7 +181,7 @@ For rich text in v1, no CRDT/OT co-editing is required. Treat the description as
 
 Use SimpleWebAuthn for WebAuthn registration/assertion. The relying-party ID/origin must match the stable **HTTPS hostname** configured by the installer; `localhost` is suitable only for local development. The owner's expected hostname is `tasks.terning.net`, **not a hardcoded default for other installs**.
 
-Require email verification for normal invited account creation. The **first-admin CLI-code bootstrap must work without SMTP**, and the bootstrap admin may verify email once SMTP is configured. Sessions use Secure, HttpOnly cookies with appropriate SameSite/CSRF protections, revocation and expiration. Support multiple passkeys. Do not implement a normal password sign-in path.
+Email-delivered invitations verify the recipient inbox. Owner-approved hand-delivered invitation codes are an explicit SMTP-independent exception: they expire after 30 minutes, are consumed transactionally once, and must never mark an email as verified. Verify expiry again when passkey enrollment completes. The **first-admin CLI-code bootstrap must work without SMTP**, and the bootstrap admin may verify email once SMTP is configured. Sessions use Secure, HttpOnly cookies with appropriate SameSite/CSRF protections, revocation and expiration. Support multiple passkeys. Do not implement a normal password sign-in path.
 
 For recovery, send a short-lived one-use token/link to the registered verified email, enabling **new passkey enrollment**. Include rate limits, generic responses that do not enumerate accounts, replay protection and logging of recovery actions. Admin-assisted recovery requires suitable safeguards; deployment-owner emergency CLI recovery must not depend on working SMTP or UI. Recovery links effectively make control of the email account a recovery factor; document this risk.
 
@@ -191,7 +191,7 @@ On an uninitialized DB, generate a one-use setup code, retrievable via Docker CL
 
 ### Email configuration
 
-Deployment-administrator UI can configure SMTP server, port, TLS/STARTTLS, credentials, sender and send a test email without Docker restarts. Encrypt stored SMTP secrets at rest using application key material outside the DB (environment/secret volume), never return secrets in API responses and avoid logging them. If SMTP is unavailable during first setup, CLI bootstrap still works; subsequent invitations/recovery explain SMTP prerequisites.
+Deployment-administrator UI can configure SMTP server, port, TLS/STARTTLS, credentials, sender and send a test email without Docker restarts. Encrypt stored SMTP secrets at rest using application key material outside the DB (environment/secret volume), never return secrets in API responses and avoid logging them. If SMTP is unavailable during first setup, CLI bootstrap still works; email invitations/recovery explain SMTP prerequisites; household admins can instead create a 30-minute invitation code without SMTP.
 
 ## 9. Background worker, files and lifecycle
 

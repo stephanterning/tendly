@@ -1,6 +1,7 @@
 name: tendly
 x-app-env: &app-env
-  NODE_ENV: production
+  NODE_ENV: ${NODE_ENV:-production}
+  APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:?Set a 32-byte hex APP_ENCRYPTION_KEY in .env}
   DATABASE_URL: postgresql://tendly:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/tendly
   PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN to your HTTPS origin}
   APP_VERSION: ${TENDLY_VERSION:-0.0.0-dev}

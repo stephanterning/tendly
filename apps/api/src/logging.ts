@@ -1,4 +1,4 @@
 export const logRedaction = {
-  paths: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]', 'password', 'token', 'DATABASE_URL'],
+  paths: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]', 'password', 'token', 'DATABASE_URL', 'APP_ENCRYPTION_KEY'],
   censor: '[REDACTED]',
 };

@@ -4,8 +4,8 @@ A self-hosted household task manager: simple daily use, powerful planning when n
 English/Swedish, mobile and desktop, and portable Docker deployment. Licensed under
 [AGPL-3.0-or-later](LICENSE).
 
-**Development status:** Stage 1 foundation. This is not yet the Milestone 1 Viable
-Product. There are no account or task workflows yet. M1 retains the complete approved
+**Development status:** Stage 2 accounts and household access. This is not yet the Milestone 1 Viable
+Product. Passkey accounts, invitations, recovery and account settings are implemented; task workflows follow in the approved stages. M1 retains the complete approved
 scope; automatic GPS and notifications follow in M2, and integrated cloud backup in M4.
 
 ## Start here
@@ -13,6 +13,7 @@ scope; automatic GPS and notifications follow in M2, and integrated cloud backup
 - [Developer setup](docs/development.md)
 - [Deployment and operations](docs/operations.md)
 - [Approved delivery stages and acceptance mapping](docs/implementation/delivery-stages.md)
+- [Stage 2 review](docs/implementation/stage-2-review.md)
 - [Stage 1 review](docs/implementation/stage-1-review.md)
 - [Contributor guidelines](CONTRIBUTING.md)
 

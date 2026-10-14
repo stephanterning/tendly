@@ -23,7 +23,8 @@ describe('operational boundary', () => {
     expect(databaseClosed).toBe(true);
   });
   it('rejects insecure production origins and keeps configuration secrets out of errors', () => {
-    expect(() => readConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgres://user:secret@localhost/db', PUBLIC_ORIGIN: 'http://localhost' })).toThrow('HTTPS');
-    expect(() => readConfig({ DATABASE_URL: 'secret', PUBLIC_ORIGIN: 'https://example.com/path' })).toThrow('Invalid configuration: DATABASE_URL, PUBLIC_ORIGIN');
+    expect(readConfig({ APP_ENCRYPTION_KEY: '0'.repeat(64), DATABASE_URL: 'postgres://user:secret@localhost/db', PUBLIC_ORIGIN: 'https://example.com:443/' }).PUBLIC_ORIGIN).toBe('https://example.com');
+    expect(() => readConfig({ APP_ENCRYPTION_KEY: '0'.repeat(64), NODE_ENV: 'production', DATABASE_URL: 'postgres://user:secret@localhost/db', PUBLIC_ORIGIN: 'http://localhost' })).toThrow('HTTPS');
+    expect(() => readConfig({ APP_ENCRYPTION_KEY: '0'.repeat(64), DATABASE_URL: 'secret', PUBLIC_ORIGIN: 'https://example.com/path' })).toThrow('Invalid configuration: DATABASE_URL, PUBLIC_ORIGIN');
   });
 });
