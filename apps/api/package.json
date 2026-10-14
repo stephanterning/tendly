@@ -1,0 +1,35 @@
+{
+  "name": "@tendly/api",
+  "private": true,
+  "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "generate": "tsx src/generate-openapi.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate-cli.ts"
+  },
+  "dependencies": {
+    "@tendly/shared": "workspace:*",
+    "fastify": "5.12.7",
+    "@fastify/swagger": "9.9.2",
+    "fastify-type-provider-zod": "6.1.0",
+    "zod": "4.6.7",
+    "pg": "8.23.1",
+    "drizzle-orm": "0.45.4",
+    "pino": "10.4.0"
+  },
+  "exports": {
+    "./config": "./dist/config.js",
+    "./logging": "./dist/logging.js"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1",
+    "tsx": "4.23.15",
+    "drizzle-kit": "0.31.11"
+  }
+}
