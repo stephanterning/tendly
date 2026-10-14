@@ -1,0 +1,6 @@
+import { pgTable, timestamp, uuid } from 'drizzle-orm/pg-core';
+// Only installation metadata belongs in Stage 1; account/domain tables follow in their stages.
+export const installation = pgTable('installation', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
