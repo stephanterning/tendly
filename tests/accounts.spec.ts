@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
+import { hierarchyJourney } from './hierarchy-journey.js';
 import { taskJourney } from './tasks-journey.js';
 import { execFileSync } from 'node:child_process';
 
@@ -46,6 +47,7 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await page.getByLabel('Household timezone').fill('Europe/Stockholm');
   await page.getByRole('button', { name: 'Create account with a passkey' }).click();
   await taskJourney(page);
+  await hierarchyJourney(page);
   await settings(page);
   await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   const offlineContext = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US', permissions: ['clipboard-read', 'clipboard-write'] });
