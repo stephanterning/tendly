@@ -48,7 +48,7 @@ beforeAll(async () => {
 }, 30000);
 afterAll(async () => {
   await app?.close(); await pool?.end();
-  if (root) { await root.query(`DROP DATABASE IF EXISTS "${databaseName}" WITH (FORCE)`); await root.end(); }
+  if (root) { await root.query(`DROP DATABASE IF EXISTS "${databaseName}"`); await root.end(); }
 });
 it('denies cross-household access, foreign websocket subscriptions, and deployment privilege escalation', async () => {
   expect((await app.inject({ url: `/api/v1/households/${householdB}/members`, headers: headers(sessionA) })).statusCode).toBe(404);
@@ -129,4 +129,10 @@ it('preserves a final administrator and scopes session revocation', async () => 
   expect(await service.findSession(sessionB)).toBeNull();
   await db.update(schema.sessions).set({ expiresAt: new Date(0) }).where(eq(schema.sessions.id, digest(sessionA)));
   expect((await app.inject({ url: `/api/v1/households/${householdA}/members`, headers: headers(sessionA) })).statusCode).toBe(401);
+});
+it('keeps validated-user traffic separate and never grants new rate buckets to forged cookies', async () => {
+  const responses = await Promise.all(Array.from({ length: 130 }, (_, index) => app.inject({ url: '/api/v1/auth/status', headers: { cookie: '__Host-tendly=forged-' + index } })));
+  expect(responses.some(response => response.statusCode === 429)).toBe(true);
+  const valid = await service.session(db, userB);
+  expect((await app.inject({ url: '/api/v1/auth/status', headers: headers(valid) })).statusCode).toBe(200);
 });

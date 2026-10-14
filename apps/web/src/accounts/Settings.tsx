@@ -8,11 +8,11 @@ import { api, result } from './api.js';
 import { enroll, errorKey, signIn, type EntryLink } from './Auth.js';
 
 type Run = (action: () => Promise<unknown>, message?: string) => Promise<void>;
-export function Settings({ account, refresh, link, clearLink, useInvitation }: { account: Account; refresh: () => Promise<void>; link: EntryLink; clearLink: () => void; useInvitation: (code: string) => void }) {
+export function Settings({ account, refresh, link, clearLink, useInvitation, embedded = false, activeHouseholdId }: { account: Account; refresh: () => Promise<void>; link: EntryLink; clearLink: () => void; useInvitation: (code: string) => void; embedded?: boolean; activeHouseholdId?: string }) {
   const { t, i18n } = useTranslation();
   const queries = useQueryClient();
   const [page, setPage] = useState('account');
-  const [householdId, setHouseholdId] = useState(account.households[0]?.id ?? '');
+  const [householdId, setHouseholdId] = useState(activeHouseholdId ?? account.households[0]?.id ?? '');
   const household = account.households.find((item) => item.id === householdId) ?? account.households[0];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -24,18 +24,18 @@ export function Settings({ account, refresh, link, clearLink, useInvitation }: {
     finally { setBusy(false); }
   };
   return <div className="app-shell">
-    <header className="topbar"><div className="brand"><House size={22} /> Tendly</div><button className="quiet" onClick={() => void run(async () => { await result(api.POST('/api/v1/auth/logout', { body: {} })); }, '')}><LogOut size={16} />{t('signOut')}</button></header>
+    <header className="topbar">{!embedded && <div className="brand"><House size={22} /> Tendly</div>}<button className="quiet" onClick={() => void run(async () => { await result(api.POST('/api/v1/auth/logout', { body: {} })); }, '')}><LogOut size={16} />{t('signOut')}</button></header>
     <div className="settings-layout"><aside>
       <h1>{t('settings')}</h1>
-      {account.households.length > 1 && <label>{t('household')}<select value={household?.id ?? ''} onChange={(event) => setHouseholdId(event.target.value)}>{account.households.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
+      {!embedded && account.households.length > 1 && <label>{t('household')}<select value={household?.id ?? ''} onChange={(event) => setHouseholdId(event.target.value)}>{account.households.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
       {account.households.length === 1 && <p className="muted small">{household?.name}</p>}
       <nav aria-label={t('settings')}>
         <button aria-current={page === 'account' ? 'page' : undefined} onClick={() => { setPage('account'); setError(''); setNotice(''); }}><UserRound size={18} />{t('account')}</button>
         {household && <button aria-current={page === 'members' ? 'page' : undefined} onClick={() => { setPage('members'); setError(''); setNotice(''); }}><UsersRound size={18} />{t('members')}</button>}
         {account.deploymentAdmin && <button aria-current={page === 'smtp' ? 'page' : undefined} onClick={() => { setPage('smtp'); setError(''); setNotice(''); }}><Mail size={18} />{t('smtp')}</button>}
       </nav>
-      <p className="stage-note">{t('stage')}</p>
-    </aside><main className="settings-main" aria-busy={busy}>
+
+    </aside><section className="settings-main" aria-busy={busy}>
       {error && <div className="alert error" role="alert">{t(error)}{error === 'reauthentication_required' && <><p>{t('reauthText')}</p><button onClick={() => void run(signIn)}>{t('reauth')}</button></>}</div>}
       {notice && <p className="alert" role="status">{t(notice)}</p>}
       {link && <section className="panel"><h2>{t(link.purpose === 'invite' ? 'invitation' : 'verify')}</h2><button className="primary" disabled={busy} onClick={() => void run(async () => {
@@ -46,7 +46,7 @@ export function Settings({ account, refresh, link, clearLink, useInvitation }: {
       {page === 'account' && <><AccountPanel account={account} run={run} busy={busy} /><section className="panel"><InvitationCodeEntry onUse={useInvitation} /></section></>}
       {page === 'members' && household && <MembersPanel key={household.id} household={household} run={run} busy={busy} />}
       {page === 'smtp' && account.deploymentAdmin && <SmtpPanel run={run} busy={busy} />}
-    </main></div>
+    </section></div>
   </div>;
 }
 function AccountPanel({ account, run, busy }: { account: Account; run: Run; busy: boolean }) {
