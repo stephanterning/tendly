@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, result } from './api.js';
 import { Auth, type EntryLink } from './Auth.js';
-import { Settings } from './Settings.js';
+import { Workspace } from '../tasks/Workspace.js';
 function readLink(): EntryLink {
   const params = new URLSearchParams(window.location.hash.slice(1));
   for (const purpose of ['invite', 'recovery', 'verify_email']) {
@@ -42,8 +42,8 @@ export function App() {
   }, [account, i18n]);
   useEffect(() => { document.documentElement.lang = i18n.language; }, [i18n.language]);
   async function refresh() { await queries.invalidateQueries({ queryKey: ['session'] }); await queries.invalidateQueries({ queryKey: ['status'] }); }
-  if (status.isError || session.isError) return <main className="auth-layout"><section className="auth-card"><h1>Tendly</h1><p role="alert">{t('network_error')}</p><button onClick={() => { void status.refetch(); void session.refetch(); }}>{t('retry')}</button></section></main>;
+  if (status.isError || session.isError) return <main className="auth-layout"><section className="auth-card"><h1>Tendly</h1><p role="alert">{t(i18n.exists((status.error ?? session.error)?.message ?? '') ? (status.error ?? session.error)!.message : 'network_error')}</p><button onClick={() => { void status.refetch(); void session.refetch(); }}>{t('retry')}</button></section></main>;
   if (status.isPending || session.isPending) return <main className="auth-layout"><p role="status">{t('loading')}</p></main>;
-  if (account && link?.purpose !== 'recovery') return <Settings account={account} refresh={refresh} link={link} useInvitation={(token) => setLink({ purpose: 'invite', token })} clearLink={() => setLink(null)} />;
+  if (account && link?.purpose !== 'recovery') return <Workspace account={account} refresh={refresh} link={link} useInvitation={(token) => setLink({ purpose: 'invite', token })} clearLink={() => setLink(null)} />;
   return <Auth key={link?.token ?? 'login'} initialized={status.data.initialized} emailAvailable={status.data.emailAvailable} link={link} refresh={refresh} useInvitation={(token) => setLink({ purpose: 'invite', token })} clearLink={() => setLink(null)} />;
 }
