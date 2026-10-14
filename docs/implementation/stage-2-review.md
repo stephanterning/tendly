@@ -7,7 +7,7 @@ Stage 3 has not started. The complete Milestone 1 VP scope remains unchanged.
 
 - One-time CLI bootstrap without SMTP, passkey enrollment/login, multiple keys,
   revocable sessions and recent-authentication checks for sensitive operations.
-- Email verification, household invitations, email and administrator-assisted recovery,
+- Email verification, household invitations by email or one-use 30-second copied code, email and administrator-assisted recovery,
   plus installation-owner CLI recovery when email is unavailable.
 - Separate deployment and household privileges, membership administration, multi-household
   account membership/switching, protected REST and WebSocket household scopes.
@@ -22,12 +22,12 @@ Stage 3 has not started. The complete Milestone 1 VP scope remains unchanged.
 Local macOS ARM64 checks passed:
 
 - Build, lint, strict typecheck; four focused unit/HTTP checks.
-- Six PostgreSQL integration checks covering migration races/persistence, household
+- Seven PostgreSQL integration checks covering migration races/persistence, household
   isolation, deployment privilege separation, WebSocket authorization, encrypted SMTP
   credentials, one-use/expired invitation tokens, generic recovery responses, rejected
   forged enrollment, final-admin protection and scoped session revocation.
 - One Chromium journey using a virtual authenticator and actual server WebAuthn
-  verification: setup → configure TLS SMTP → verify email → invite → mobile settings →
+  verification: setup → invite without SMTP using a copied code → configure TLS SMTP → verify email → invite → mobile settings →
   email recovery → old-session invalidation → passkey login → CLI recovery without SMTP.
 - Fresh Docker builds/migrations and healthy API, worker, PostgreSQL and web services.
 - Desktop setup and mobile light/dark screenshots inspected; no horizontal clipping.

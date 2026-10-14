@@ -1,6 +1,18 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 const copy: Record<string, [string, string]> = {
+  haveInvitationCode: ['Have an invitation code?', 'Har du en inbjudningskod?'],
+  invitationCode: ['Invitation code', 'Inbjudningskod'],
+  useInvitationCode: ['Use invitation code', 'Använd inbjudningskod'],
+  createInvitationCode: ['Create invitation code', 'Skapa inbjudningskod'],
+  copyInvitationCode: ['Copy invitation code', 'Kopiera inbjudningskod'],
+  invitationCodeHelp: ['No email needed: share a code privately. It works once for 30 seconds; the recipient must finish joining before it expires.', 'Utan mejl: dela en kod privat. Den gäller en gång i 30 sekunder; mottagaren behöver slutföra anslutningen innan den går ut.'],
+  codeFor: ['Code for {{email}}', 'Kod för {{email}}'],
+  codeExpires: ['Expires in {{count}} seconds.', 'Går ut om {{count}} sekunder.'],
+  codeCopied: ['Code copied. The recipient pastes it under “Have an invitation code?” in Tendly.', 'Koden är kopierad. Mottagaren klistrar in den under ”Har du en inbjudningskod?” i Tendly.'],
+  copyCodeManually: ['Copy the selected code manually.', 'Kopiera den markerade koden manuellt.'],
+  invitationCodeExpired: ['The code has expired. Create a new one if needed.', 'Koden har gått ut. Skapa en ny om det behövs.'],
+
   welcome: ['Welcome to Tendly', 'Välkommen till Tendly'],
   welcomeText: ['A shared place for everything that makes a home.', 'En gemensam plats för allt som hör hemmet till.'],
   setup: ['Make yourself at home', 'Skapa plats för ert hem'],
@@ -36,7 +48,7 @@ const copy: Record<string, [string, string]> = {
   reauth: ['Confirm your identity', 'Bekräfta din identitet'],
   reauthText: ['For sensitive changes, confirm your passkey and then try again.', 'Bekräfta din passkey innan känsliga ändringar och försök sedan igen.'],
   role: ['Role', 'Roll'], admin: ['Administrator', 'Administratör'], member: ['Member', 'Medlem'], invite: ['Invite someone', 'Bjud in någon'], sendInvite: ['Send invitation', 'Skicka inbjudan'],
-  inviteText: ['They will receive an email to join this household using a passkey.', 'Personen får ett mejl för att gå med i hushållet med en passkey.'],
+  inviteText: ['Invite by email or share a short-lived code. They join this household using a passkey.', 'Bjud in via mejl eller dela en kortlivad kod. Personen går med i hushållet med en passkey.'],
   assist: ['Send recovery email', 'Skicka återställningsmejl'],
   smtpText: ['These settings apply to the entire installation. Only deployment administrators can change them.', 'Inställningarna gäller hela installationen. Endast installationsadministratörer kan ändra dem.'],
   host: ['SMTP server', 'SMTP-server'], port: ['Port', 'Port'], security: ['Connection security', 'Anslutningssäkerhet'], username: ['Username (optional)', 'Användarnamn (valfritt)'], password: ['SMTP password', 'SMTP-lösenord'], keepPassword: ['Leave blank to keep the saved password', 'Lämna tomt för att behålla sparat lösenord'], sender: ['Sender email address', 'Avsändarens e-postadress'], testEmail: ['Send a test to my email', 'Skicka ett test till min e-post'],

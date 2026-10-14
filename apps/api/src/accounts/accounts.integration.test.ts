@@ -60,6 +60,33 @@ it('denies cross-household access, foreign websocket subscriptions, and deployme
   socket.close();
   expect((await app.inject({ method: 'POST', url: '/api/v1/auth/logout', headers: { ...headers(sessionA), origin: 'https://attacker.test' }, payload: {} })).statusCode).toBe(403);
 });
+it('issues single-use 30-second invitation codes without SMTP or email verification', async () => {
+  const payload = { email: 'unverified@example.test', role: 'member' };
+  const path = '/api/v1/households/' + householdA + '/invitation-codes';
+  expect((await app.inject({ method: 'POST', url: path, headers: headers(sessionB), payload })).statusCode).toBe(404);
+  expect((await app.inject({ method: 'POST', url: path, headers: headers(deploymentSession), payload })).statusCode).toBe(404);
+  const started = Date.now();
+  const issued = await app.inject({ method: 'POST', url: path, headers: headers(sessionA), payload });
+  expect(issued.statusCode).toBe(200);
+  const { code, expiresAt } = issued.json<{ code: string; expiresAt: string }>();
+  expect(Date.parse(expiresAt) - started).toBeGreaterThanOrEqual(30_000);
+  expect(Date.parse(expiresAt) - Date.now()).toBeLessThanOrEqual(30_000);
+  const token = await service.validToken(digest(code));
+  expect(token.verifiesEmail).toBe(false);
+  expect(token.id).not.toBe(code);
+  const id = randomUUID();
+  await db.insert(schema.users).values({ id, name: 'Code recipient', email: payload.email });
+  const bearer = await service.session(db, id);
+  const redeem = () => app.inject({ method: 'POST', url: '/api/v1/auth/invitations/accept', headers: headers(bearer), payload: { token: code } });
+  expect((await Promise.all([redeem(), redeem()])).map(r => r.statusCode).sort()).toEqual([200, 400]);
+  expect((await service.findSession(bearer))!.user.emailVerifiedAt).toBeNull();
+  expect(await service.createRecovery(payload.email)).toBeNull();
+  const expired = await app.inject({ method: 'POST', url: path, headers: headers(sessionA), payload });
+  const expiredCode = expired.json<{ code: string }>().code;
+  await db.update(schema.tokens).set({ expiresAt: new Date(Date.now() - 1) }).where(eq(schema.tokens.id, digest(expiredCode)));
+  expect((await app.inject({ method: 'POST', url: '/api/v1/auth/invitations/accept', headers: headers(bearer), payload: { token: expiredCode } })).statusCode).toBe(400);
+  await expect(service.registrationOptions({ flow: 'invite', token: expiredCode, name: 'Late' }, null, randomUUID())).rejects.toThrow('invalid_or_expired_link');
+});
 it('protects SMTP secrets at rest and in API responses', async () => {
   const response = await app.inject({ method: 'PUT', url: '/api/v1/settings/smtp', headers: headers(deploymentSession), payload: { host: 'mail.example.test', port: 587, security: 'starttls', username: 'sender', password: 'not-a-real-password', sender: 'sender@example.test' } });
   expect(response.statusCode).toBe(200);

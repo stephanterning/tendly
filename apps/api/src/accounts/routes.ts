@@ -157,16 +157,18 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
     const current = await actor(request); recent(current);
     await householdAccess(db, current, request.params.id, true);
     if (!await mail.config()) throw new AccountError('smtp_not_configured', 503);
-    const token = randomToken();
-    await db.transaction(async (tx) => {
-      await lockAccounts(tx);
-      await householdAccess(tx, current, request.params.id, true);
-      await tx.insert(tokens).values({ id: digest(token), purpose: 'invite', householdId: request.params.id, email: request.body.email, role: request.body.role, expiresAt: new Date(Date.now() + 48 * 3600_000) });
-      await tx.insert(securityEvents).values({ actorId: current.user.id, action: 'invitation_issued' });
-    });
+    const { token } = await service.createInvitation(current, request.params.id, request.body.email, request.body.role, 'email');
     try { await mail.sendToken(request.body.email, token, 'invite'); }
     catch (error) { await db.delete(tokens).where(eq(tokens.id, digest(token))); throw error; }
     return ok;
+  });
+  app.post('/api/v1/households/:id/invitation-codes', {
+    config: authLimit,
+    schema: { params: idParam, body: z.object({ email: emailSchema, role: roleSchema }), response: { 200: z.object({ code: z.string(), expiresAt: z.string() }) } },
+  }, async (request) => {
+    const current = await actor(request); recent(current);
+    const invitation = await service.createInvitation(current, request.params.id, request.body.email, request.body.role, 'code');
+    return { code: invitation.token, expiresAt: invitation.expiresAt.toISOString() };
   });
   const changeMember = async (request: FastifyRequest, params: { id: string; userId: string }, role: 'admin' | 'member' | null) => {
     const current = await actor(request); recent(current);
