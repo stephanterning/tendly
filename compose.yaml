@@ -60,6 +60,8 @@ services:
       target: worker
     environment: *app-env
     init: true
+    volumes:
+      - attachments:/data/attachments
     depends_on:
       migrate:
         condition: service_completed_successfully

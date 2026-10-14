@@ -14,6 +14,7 @@ CMD ["pnpm", "--filter", "@tendly/api", "exec", "node", "dist/main.js"]
 
 FROM build AS worker
 ENV NODE_ENV=production
+RUN mkdir -p /data/attachments && chown node:node /data/attachments
 USER node
 CMD ["pnpm", "--filter", "@tendly/worker", "exec", "node", "dist/main.js"]
 
