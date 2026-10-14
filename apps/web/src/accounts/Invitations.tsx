@@ -67,7 +67,7 @@ export function InvitePanel({ householdId, run, busy }: { householdId: string; r
       {remaining > 0 ? <>
         <label>{t('invitationCode')}<input ref={codeField} readOnly value={invitation.code} autoComplete="off" spellCheck={false} onFocus={(event) => event.currentTarget.select()} /></label>
         <button onClick={() => void copy()}><Copy size={17} />{t('copyInvitationCode')}</button>
-        <p className="small muted" role="timer">{t('codeExpires', { count: remaining })}</p>
+        <p className="small muted" role="timer">{t('codeExpires', { time: Math.floor(remaining / 60) + ':' + String(remaining % 60).padStart(2, '0') })}</p>
         {copyState && <p role="status">{t(copyState)}</p>}
       </> : <p role="status">{t('invitationCodeExpired')}</p>}
     </div>}

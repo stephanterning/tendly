@@ -21,8 +21,8 @@ bearers and action tokens are stored only as SHA-256 digests. HTTPS cookies use 
 __Host- prefix, Secure, HttpOnly and SameSite. Mutations require the configured Origin
 and JSON; untrusted forwarded hosts do not determine WebAuthn origin.
 
-An email invitation or owner-approved 30-second hand-delivered invitation code only creates a new account or attaches membership to an
-already-authenticated matching account. It cannot replace an existing account's keys. Only email-delivered invitations mark email verified; copied codes leave that status unchanged. Code expiry is checked again inside the enrollment/acceptance transaction, so starting enrollment does not extend the 30-second window.
+An email invitation or owner-approved 30-minute hand-delivered invitation code only creates a new account or attaches membership to an
+already-authenticated matching account. It cannot replace an existing account's keys. Only email-delivered invitations mark email verified; copied codes leave that status unchanged. Code expiry is checked again inside the enrollment/acceptance transaction, so starting enrollment does not extend the 30-minute window.
 Email recovery only targets verified addresses. The public response is generic and
 delivery is queued, avoiding SMTP timing as an account-existence signal. Recovery
 revokes previous sessions and outstanding recovery links; retained keys can be reviewed
