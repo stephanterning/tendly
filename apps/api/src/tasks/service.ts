@@ -103,7 +103,7 @@ export class TaskService {
       if (found.length !== content.images.length) throw new AccountError('invalid_task_reference');
     }
   }
-  async validate(db: QueryDatabase, householdId: string, value: TaskFields, previous?: Task) {
+  async validate(db: QueryDatabase, householdId: string, value: TaskFields, previous?: Task, retainedTemplate = false) {
     await this.validateContent(db, householdId, value.description);
     if ((!value.startDate && value.startTime) || (!value.deadlineDate && value.deadlineTime)) throw new AccountError('date_required');
     const expected = [
@@ -115,7 +115,7 @@ export class TaskService {
     for (const item of expected) {
       const record = records.find(e => e.id === item.id && e.kind === item.kind);
       if (!record) throw new AccountError('invalid_task_reference');
-      if (record.archived && (item.kind === 'epic' ? previous?.epicId !== item.id : ![...(previous?.places ?? []), ...(previous?.resources ?? []), ...(previous?.tags ?? [])].includes(item.id))) throw new AccountError('entity_archived');
+      if (record.archived && !retainedTemplate && (item.kind === 'epic' ? previous?.epicId !== item.id : ![...(previous?.places ?? []), ...(previous?.resources ?? []), ...(previous?.tags ?? [])].includes(item.id))) throw new AccountError('entity_archived');
     }
     const references = [...new Set([...(value.parentId ? [value.parentId] : []), ...value.blockers, ...value.related])];
     if (references.length) {
@@ -182,8 +182,14 @@ export class TaskService {
       }).returning();
       await this.collections(tx, row!.id, value);
       await this.graphCollections(tx, row!.id, value, actor.user.id);
+      for (const [index, title] of (input.subtasks ?? []).entries()) {
+        const child = taskFields.parse({ ...value, title, description: '', column: 'someday', parentId: row!.id, inherit: [...inheritedFields], epicId: null, high: false, size: null, estimateMinutes: null, startDate: null, startTime: null, deadlineDate: null, deadlineTime: null, assignees: [], places: [], resources: [], tags: [], placeExclusions: [], resourceExclusions: [], tagExclusions: [], blockers: [], related: [] });
+        const [inserted] = await tx.insert(tasks).values({ ...this.values(child), householdId, order: (last?.value ?? 0) + (index + 2) * 1024, createdBy: actor.user.id }).returning();
+        await tx.insert(taskActivities).values({ taskId: inserted!.id, actorId: actor.user.id, version: 1, fields: ['created'] });
+      }
       const created = await this.graph(tx, householdId, household.timezone);
       created.graph.validateDependencies();
+      if (value.column === 'done' && input.subtasks?.length && !input.confirmDescendants) throw new AccountError('confirm_descendants', 409);
       if (value.column === 'in_progress' && !created.task(row!.id).available && !input.confirmUnavailable) throw new AccountError('confirm_unavailable', 409);
       await tx.insert(taskActivities).values({ taskId: row!.id, actorId: actor.user.id, version: 1, fields: ['created'] });
       return created.task(row!.id);
@@ -301,6 +307,17 @@ export class TaskService {
         await tx.insert(taskActivities).values({ taskId: task.id, actorId: actor.user.id, version: task.version + 1, fields: [field] });
       }
       await tx.delete(entities).where(eq(entities.id, id));
+      // JSON template references need the same deletion semantics as task FKs.
+      // Otherwise deleting a tag/epic would break every future occurrence.
+      const saved = await tx.select().from(templates).where(eq(templates.householdId, householdId));
+      for (const template of saved) {
+        const nodes = template.nodes.map(node => ({ ...node, value: { ...node.value,
+          epicId: node.value.epicId === id ? null : node.value.epicId,
+          places: node.value.places.filter(value => value !== id), resources: node.value.resources.filter(value => value !== id), tags: node.value.tags.filter(value => value !== id),
+          placeExclusions: node.value.placeExclusions.filter(value => value !== id), resourceExclusions: node.value.resourceExclusions.filter(value => value !== id), tagExclusions: node.value.tagExclusions.filter(value => value !== id),
+        } }));
+        if (JSON.stringify(nodes) !== JSON.stringify(template.nodes)) await tx.update(templates).set({ nodes, version: template.version + 1 }).where(eq(templates.id, template.id));
+      }
     });
   }
   async reorderEntity(actor: Actor, householdId: string, id: string, direction: 'up' | 'down', baseVersion: number) {

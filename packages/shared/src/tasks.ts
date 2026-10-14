@@ -27,7 +27,7 @@ export const taskFields = z.object({
   deadlineDate: z.iso.date().nullable(), deadlineTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable(),
   assignees: ids, places: ids, resources: ids, tags: ids,
 });
-export const taskCreateSchema = taskFields.partial().extend({ title: taskFields.shape.title, confirmUnavailable: z.boolean().optional(), confirmDescendants: z.boolean().optional() }).strict();
+export const taskCreateSchema = taskFields.partial().extend({ title: taskFields.shape.title, subtasks: z.array(taskFields.shape.title).max(100).optional(), confirmUnavailable: z.boolean().optional(), confirmDescendants: z.boolean().optional() }).strict();
 export const taskChangesSchema = taskFields.partial().extend({ column: z.union([columnSchema, z.literal('reopen')]).optional() }).strict().refine(v => Object.keys(v).length > 0);
 export const taskPatchSchema = z.object({ baseVersion: z.number().int().min(1), changes: taskChangesSchema, confirmUnavailable: z.boolean().optional(), confirmDescendants: z.boolean().optional() });
 export const inheritedValuesSchema = taskFields.pick({ epicId: true, high: true, startDate: true, startTime: true, deadlineDate: true, deadlineTime: true, assignees: true, places: true, resources: true, tags: true }).extend({ assignees: z.array(z.uuid()), places: z.array(z.uuid()), resources: z.array(z.uuid()), tags: z.array(z.uuid()) });

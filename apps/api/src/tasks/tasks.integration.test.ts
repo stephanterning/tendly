@@ -251,10 +251,12 @@ it('materializes recurrence once, preserves instance edits and safely restores/d
   const { eq } = await import('drizzle-orm');
   const actor = (await service.findSession(sessionA))!, actorB = (await service.findSession(sessionB))!;
   const templates = new TemplateService(db), lifecycle = new LifecycleService(db);
-  const root = await planning.create(actor, householdA, { title: 'Winterize', startDate: '2030-10-01', deadlineDate: '2030-10-15' });
+  const epic = await planning.entityWrite(actor, householdA, { kind: 'epic', name: 'Seasonal work' });
+  const root = await planning.create(actor, householdA, { title: 'Winterize', epicId: epic.id, startDate: '2030-10-01', deadlineDate: '2030-10-15' });
   const a = await planning.create(actor, householdA, { title: 'Turn off pump', parentId: root.id });
   await planning.create(actor, householdA, { title: 'Drain pipes', parentId: root.id, blockers: [a.id] });
   const template = await templates.capture(actor, householdA, root.id, 'Winterization', { anchor: '2030-10-01', interval: 1, unit: 'years', leadDays: 14, enabled: true });
+  await planning.entityWrite(actor, householdA, { archived: true }, epic.id, epic.version);
   await maintainHousehold(db, householdA, new Date('2030-09-16T12:00Z'));
   expect(await db.select().from(schema.occurrences).where(eq(schema.occurrences.templateId, template.id))).toHaveLength(0);
   await Promise.all([maintainHousehold(db, householdA, new Date('2030-09-17T12:00Z')), maintainHousehold(db, householdA, new Date('2030-09-17T12:00Z'))]);
@@ -263,6 +265,8 @@ it('materializes recurrence once, preserves instance edits and safely restores/d
   const instance = await planning.get(db, householdA, occurrences[0]!.rootId, 'Europe/Stockholm');
   const pump = instance.children.find(c => c.title === 'Turn off pump')!, drain = instance.children.find(c => c.title === 'Drain pipes')!;
   expect((await planning.get(db, householdA, drain.id, 'Europe/Stockholm')).blockers).toEqual([pump.id]);
+  expect(instance.epicId).toBe(epic.id);
+  await planning.entityWrite(actor, householdA, { archived: false }, epic.id, epic.version + 1);
   await templates.save(actor, householdA, { ...template, name: 'Updated series', nodes: template.nodes.map(n => ({ ...n, value: { ...n.value, title: n.value.title + ' future' } })) }, template.id, template.version);
   expect((await planning.get(db, householdA, instance.id, 'Europe/Stockholm')).title).toBe('Winterize');
   await expect(templates.createInstance(actorB, householdB, template.id, '2030-10-01')).rejects.toThrow('template_not_found');
@@ -280,6 +284,8 @@ it('materializes recurrence once, preserves instance edits and safely restores/d
   await expect(lifecycle.change(actor, householdA, blocker.id, blocker.version, 'delete', false)).rejects.toThrow('confirm_dependent_deletion');
   await lifecycle.change(actor, householdA, blocker.id, blocker.version, 'delete', true);
   expect((await planning.get(db, householdA, dependent.id, 'Europe/Stockholm')).available).toBe(false);
+  await planning.entityDelete(actor, householdA, epic.id, epic.version + 2);
+  expect((await templates.createInstance(actor, householdA, template.id, '2031-10-01')).epicId).toBeNull();
 });
 
 it('keeps rich content and downloads household-scoped, protects comment authors and searches comment text', async () => {
@@ -307,4 +313,15 @@ it('keeps rich content and downloads household-scoped, protects comment authors 
   const search = await app.inject({ method: 'POST', url: `/api/v1/households/${householdA}/search`, headers: headers(sessionA), payload: { query: 'brass fitting', definition: null, currentPlace: null } });
   expect(search.statusCode).toBe(200);
   expect(search.json().tasks.map((result: { task: { id: string } }) => result.task.id)).toContain(task.id);
+  const imageDescription = JSON.stringify({ type: 'doc', content: [{ type: 'image', attrs: { src: `/api/v1/households/${householdA}/files/${file.id}`, alt: 'Inspection', title: null, width: null, height: null } }] });
+  const withImage = await planning.patch(actor, householdA, task.id, task.version, { description: imageDescription });
+  await expect(content.removeFile(actor, householdA, file.id)).rejects.toThrow('file_in_use');
+  const { TemplateService } = await import('../lifecycle/templates.js');
+  const { LifecycleService } = await import('../lifecycle/service.js');
+  const templates = new TemplateService(db), template = await templates.capture(actor, householdA, task.id, 'Keep illustration', null);
+  await new LifecycleService(db).change(actor, householdA, task.id, withImage.version, 'delete', true);
+  const copy = await templates.createInstance(actor, householdA, template.id, '2030-10-01');
+  expect(copy.description).toBe(imageDescription);
+  expect((await content.download(actor, householdA, file.id)).bytes.length).toBeGreaterThan(0);
+
 });
