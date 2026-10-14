@@ -165,7 +165,7 @@ export class AccountService {
       await lockAccounts(tx);
       await householdAccess(tx, actor, householdId, true);
       const token = randomToken();
-      const expiresAt = new Date(Date.now() + (delivery === 'code' ? 30_000 : 48 * 3600_000));
+      const expiresAt = new Date(Date.now() + (delivery === 'code' ? 30 * 60_000 : 48 * 3600_000));
       await tx.insert(tokens).values({
         id: digest(token), purpose: 'invite', householdId, email, role, expiresAt,
         verifiesEmail: delivery === 'email',

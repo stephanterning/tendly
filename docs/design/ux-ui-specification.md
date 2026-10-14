@@ -168,4 +168,4 @@ The image illustrates visual rhythm, tinted epic cards, light/dark surfaces and 
 
 ## Invitation codes — owner addition, 2026-10-14
 
-Household invitation forms offer email delivery or a copyable one-use code, with a visible 30-second countdown. Show the recipient address, explain that joining must finish before expiry, and replace expired codes with a clear create-again message. Codes use text fields, not password fields. Provide manual selection when clipboard access is unavailable. Recipients paste a code from the sign-in screen or account settings; existing accounts authenticate before accepting.
+Household invitation forms offer email delivery or a copyable one-use code, with a visible 30-minute countdown. Show the recipient address, explain that joining must finish before expiry, and replace expired codes with a clear create-again message. Codes use text fields, not password fields. Provide manual selection when clipboard access is unavailable. Recipients paste a code from the sign-in screen or account settings; existing accounts authenticate before accepting.

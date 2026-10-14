@@ -60,7 +60,7 @@ it('denies cross-household access, foreign websocket subscriptions, and deployme
   socket.close();
   expect((await app.inject({ method: 'POST', url: '/api/v1/auth/logout', headers: { ...headers(sessionA), origin: 'https://attacker.test' }, payload: {} })).statusCode).toBe(403);
 });
-it('issues single-use 30-second invitation codes without SMTP or email verification', async () => {
+it('issues single-use 30-minute invitation codes without SMTP or email verification', async () => {
   const payload = { email: 'unverified@example.test', role: 'member' };
   const path = '/api/v1/households/' + householdA + '/invitation-codes';
   expect((await app.inject({ method: 'POST', url: path, headers: headers(sessionB), payload })).statusCode).toBe(404);
@@ -69,8 +69,8 @@ it('issues single-use 30-second invitation codes without SMTP or email verificat
   const issued = await app.inject({ method: 'POST', url: path, headers: headers(sessionA), payload });
   expect(issued.statusCode).toBe(200);
   const { code, expiresAt } = issued.json<{ code: string; expiresAt: string }>();
-  expect(Date.parse(expiresAt) - started).toBeGreaterThanOrEqual(30_000);
-  expect(Date.parse(expiresAt) - Date.now()).toBeLessThanOrEqual(30_000);
+  expect(Date.parse(expiresAt) - started).toBeGreaterThanOrEqual(30 * 60_000);
+  expect(Date.parse(expiresAt) - Date.now()).toBeLessThanOrEqual(30 * 60_000);
   const token = await service.validToken(digest(code));
   expect(token.verifiesEmail).toBe(false);
   expect(token.id).not.toBe(code);

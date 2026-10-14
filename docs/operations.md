@@ -127,11 +127,11 @@ fragments and are removed from the address bar after capture.
 ## Invite without SMTP
 
 In Household, enter the recipient email and role and choose Create invitation code,
-then Copy invitation code. The code expires **30 seconds after creation**, works once
+then Copy invitation code. The code expires **30 minutes after creation**, works once
 and does not require SMTP. Share it privately with the intended recipient. They open
 the same Tendly installation and use Have an invitation code? on the sign-in screen
 (or in Your account if already signed in). New users register a passkey; existing users
-must sign into the matching account. Joining must finish within the 30-second window.
+must sign into the matching account. Joining must finish within the 30-minute window.
 If it expires during passkey setup, create a fresh code and try again.
 
 The recipient address remains unverified. Verify it separately after configuring SMTP

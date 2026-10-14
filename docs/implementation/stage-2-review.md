@@ -7,7 +7,7 @@ Stage 3 has not started. The complete Milestone 1 VP scope remains unchanged.
 
 - One-time CLI bootstrap without SMTP, passkey enrollment/login, multiple keys,
   revocable sessions and recent-authentication checks for sensitive operations.
-- Email verification, household invitations by email or one-use 30-second copied code, email and administrator-assisted recovery,
+- Email verification, household invitations by email or one-use 30-minute copied code, email and administrator-assisted recovery,
   plus installation-owner CLI recovery when email is unavailable.
 - Separate deployment and household privileges, membership administration, multi-household
   account membership/switching, protected REST and WebSocket household scopes.
