@@ -1,5 +1,5 @@
 import { vpJourney } from './vp-journey.js';
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
+import { test, expect, type BrowserContext, type Page, type WebSocket } from '@playwright/test';
 import { hierarchyJourney } from './hierarchy-journey.js';
 import { taskJourney } from './tasks-journey.js';
 import { execFileSync } from 'node:child_process';
@@ -38,6 +38,8 @@ async function mailLink(recipient: string, purpose: string) {
 
 test('install, plan tasks, invite and recover with real WebAuthn verification', async ({ page, context, browser }) => {
   test.setTimeout(150_000);
+  let householdSocket: WebSocket | undefined;
+  page.on('websocket', socket => { if (socket.url().endsWith('/events')) householdSocket = socket; });
   await authenticator(context, page);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Make yourself at home' })).toBeVisible();
@@ -54,7 +56,10 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   // This accelerated journey performs a household's planning session in seconds.
   // Let the real per-user minute bucket reset before the separate account journey;
   // keep production throttling enabled rather than adding a test-only bypass.
+  const idleSocket = householdSocket;
   await new Promise(resolve => setTimeout(resolve, 61_000));
+  // Heartbeats must keep the same idle socket alive beyond the proxy's 60-second timeout.
+  expect(idleSocket?.isClosed()).toBe(false);
   await settings(page);
   await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   const offlineContext = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US', permissions: ['clipboard-read', 'clipboard-write'] });
