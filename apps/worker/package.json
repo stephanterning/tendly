@@ -1,0 +1,21 @@
+{
+  "name": "@tendly/worker",
+  "private": true,
+  "version": "0.0.0",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@tendly/api": "workspace:*",
+    "pg-boss": "12.37.1",
+    "pino": "10.4.0"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
+  }
+}

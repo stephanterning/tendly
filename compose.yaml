@@ -1,0 +1,90 @@
+name: tendly
+x-app-env: &app-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://tendly:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/tendly
+  PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN to your HTTPS origin}
+  APP_VERSION: ${TENDLY_VERSION:-0.0.0-dev}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: tendly
+      POSTGRES_DB: tendly
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U tendly -d tendly']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+  migrate:
+    image: ghcr.io/stephanterning/tendly-api:${TENDLY_VERSION:-0.0.0-dev}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile
+      target: api
+    environment: *app-env
+    command: [pnpm, --filter, '@tendly/api', exec, node, dist/db/migrate-cli.js]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+  api:
+    image: ghcr.io/stephanterning/tendly-api:${TENDLY_VERSION:-0.0.0-dev}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile
+      target: api
+    environment: *app-env
+    init: true
+    volumes:
+      - attachments:/data/attachments
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/v1/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 6s
+      retries: 6
+    restart: unless-stopped
+  worker:
+    image: ghcr.io/stephanterning/tendly-worker:${TENDLY_VERSION:-0.0.0-dev}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile
+      target: worker
+    environment: *app-env
+    init: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, node, -e, "const fs=require('node:fs');process.exit(Date.now()-Number(fs.readFileSync('/tmp/tendly-worker-ready','utf8'))<30000?0:1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+  web:
+    image: ghcr.io/stephanterning/tendly-web:${TENDLY_VERSION:-0.0.0-dev}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile
+      target: web
+    ports:
+      - '${BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8080}:8080'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+volumes:
+  database:
+  attachments:
