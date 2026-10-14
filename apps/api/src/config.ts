@@ -24,5 +24,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env) {
   if (origin.protocol !== 'https:' && !(config.NODE_ENV !== 'production' && origin.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname))) {
     throw new Error('PUBLIC_ORIGIN must use HTTPS (HTTP localhost is development-only)');
   }
-  return config;
+  // Browser Origin and WebAuthn use the canonical origin, without a trailing slash.
+  return { ...config, PUBLIC_ORIGIN: origin.origin };
 }
