@@ -15,7 +15,11 @@ import { iconNames } from './icons.js';
 export { iconNames } from './icons.js';
 export const iconSchema = z.enum(iconNames);
 const ids = z.array(z.uuid()).max(100);
+export const inheritedFields = ['epicId', 'high', 'startDate', 'deadlineDate', 'assignees'] as const;
+export const inheritanceSchema = z.array(z.enum(inheritedFields));
 export const taskFields = z.object({
+  parentId: z.uuid().nullable(), inherit: inheritanceSchema,
+  placeExclusions: ids, resourceExclusions: ids, tagExclusions: ids, blockers: ids, related: ids,
   title: z.string().trim().min(1).max(300), description: z.string().max(50_000),
   column: columnSchema, epicId: z.uuid().nullable(), high: z.boolean(),
   size: z.enum(sizes).nullable(), estimateMinutes: z.number().int().min(1).max(525600).nullable(),
@@ -23,10 +27,19 @@ export const taskFields = z.object({
   deadlineDate: z.iso.date().nullable(), deadlineTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable(),
   assignees: ids, places: ids, resources: ids, tags: ids,
 });
-export const taskCreateSchema = taskFields.partial().extend({ title: taskFields.shape.title, confirmUnavailable: z.boolean().optional() }).strict();
+export const taskCreateSchema = taskFields.partial().extend({ title: taskFields.shape.title, confirmUnavailable: z.boolean().optional(), confirmDescendants: z.boolean().optional() }).strict();
 export const taskChangesSchema = taskFields.partial().extend({ column: z.union([columnSchema, z.literal('reopen')]).optional() }).strict().refine(v => Object.keys(v).length > 0);
-export const taskPatchSchema = z.object({ baseVersion: z.number().int().min(1), changes: taskChangesSchema, confirmUnavailable: z.boolean().optional() });
+export const taskPatchSchema = z.object({ baseVersion: z.number().int().min(1), changes: taskChangesSchema, confirmUnavailable: z.boolean().optional(), confirmDescendants: z.boolean().optional() });
+export const inheritedValuesSchema = taskFields.pick({ epicId: true, high: true, startDate: true, startTime: true, deadlineDate: true, deadlineTime: true, assignees: true, places: true, resources: true, tags: true }).extend({ assignees: z.array(z.uuid()), places: z.array(z.uuid()), resources: z.array(z.uuid()), tags: z.array(z.uuid()) });
+export const taskLinkSchema = z.object({ id: z.uuid(), title: z.string(), column: columnSchema });
 export const taskSchema = taskFields.extend({
+  local: taskFields, inheritedValues: inheritedValuesSchema,
+  places: z.array(z.uuid()), resources: z.array(z.uuid()), tags: z.array(z.uuid()), assignees: z.array(z.uuid()),
+  ancestors: z.array(taskLinkSchema), relatedTasks: z.array(taskLinkSchema), children: z.array(taskLinkSchema),
+  effectiveBlockers: z.array(z.object({ id: z.uuid(), title: z.string().nullable(), complete: z.boolean(), inherited: z.boolean() })),
+  progress: z.object({ done: z.number().int(), total: z.number().int() }),
+  unfinishedDescendants: z.number().int(), deadlineBeyondParent: z.boolean(),
+
   id: z.uuid(), householdId: z.uuid(), version: z.number().int(), order: z.number(),
   available: z.boolean(), overdue: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
   completedAt: z.string().nullable(), completedBy: z.uuid().nullable(),
