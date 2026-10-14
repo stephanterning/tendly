@@ -1,3 +1,6 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { rm } from 'node:fs/promises';
 import { beforeAll, afterAll, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
@@ -13,6 +16,7 @@ import { buildApp } from '../app.js';
 let planning: TaskService;
 const origin = 'https://accounts.example.test';
 const databaseName = `tendly_test_${randomUUID().replaceAll('-', '')}`;
+const filesDirectory = join(tmpdir(), databaseName);
 let root: pg.Client;
 let pool: pg.Pool;
 let db: ReturnType<typeof drizzle<typeof schema>>;
@@ -46,9 +50,10 @@ beforeAll(async () => {
   await db.insert(schema.households).values([{ id: householdA, name: 'A', timezone: 'Europe/Stockholm' }, { id: householdB, name: 'B', timezone: 'UTC' }]);
   await db.insert(schema.memberships).values([{ householdId: householdA, userId: userA, role: 'admin' }, { householdId: householdB, userId: userB, role: 'member' }]);
   sessionA = await service.session(db, userA); sessionB = await service.session(db, userB);
-  app = await buildApp({ checkDatabase: async () => {}, accounts: { service, mail: new MailService(db, 'ab'.repeat(32), origin, async () => {}) } });
+  app = await buildApp({ filesPath: filesDirectory, checkDatabase: async () => {}, accounts: { service, mail: new MailService(db, 'ab'.repeat(32), origin, async () => {}) } });
 }, 30000);
 afterAll(async () => {
+  await rm(filesDirectory, { recursive: true, force: true });
   await app?.close(); await pool?.end();
   if (root) { await root.query(`DROP DATABASE IF EXISTS "${databaseName}"`); await root.end(); }
 });
@@ -197,4 +202,109 @@ it('keeps relations bidirectional and nonblocking, protects peer edits, and pres
   const renamed = await planning.patch(actor, householdA, blocked.id, blocked.version, { title: 'Still editable' });
   expect(renamed.available).toBe(false);
   expect((await planning.patch(actor, householdA, blocked.id, renamed.version, { blockers: [] })).available).toBe(true);
+});
+
+it('evaluates shared nested filters on effective values, isolates personal toggles and guards saved revisions', async () => {
+  const { PlanningService } = await import('../planning/service.js');
+  const { defaultView } = await import('@tendly/shared');
+  const saved = new PlanningService(db), actor = (await service.findSession(sessionA))!;
+  const home = await planning.entityWrite(actor, householdA, { name: 'Filter home', kind: 'place' });
+  const car = await planning.entityWrite(actor, householdA, { name: 'Filter car', kind: 'resource' });
+  const trailer = await planning.entityWrite(actor, householdA, { name: 'Filter trailer', kind: 'resource' });
+  const parent = await planning.create(actor, householdA, { title: 'Filter parent', resources: [car.id, trailer.id], places: [home.id] });
+  const child = await planning.create(actor, householdA, { title: 'Filter child', parentId: parent.id, resourceExclusions: [trailer.id], column: 'todo' });
+  const filter = await saved.saveFilter(actor, householdA, { name: 'Feasible at home', icon: 'car', color: 'blue', definition: { type: 'group', operator: 'and', children: [
+    { type: 'predicate', field: 'resources', operator: 'feasible', value: [car.id] },
+    { type: 'predicate', field: 'places', operator: 'compatible', value: ['$place'] },
+  ] } });
+  const view = await saved.saveView(actor, householdA, { name: 'Focused view', icon: 'house', color: 'blue', definition: { ...defaultView(true), quickFilters: [filter.id] } });
+  await saved.personal(actor, householdA, view.id, { version: 0, activeFilters: [filter.id], favorite: true, currentPlace: home.id });
+  const found = await saved.results(actor, householdA, { viewId: view.id, offset: 0, limit: 100 });
+  expect(found.items.map(t => t.id)).toContain(child.id);
+  expect(found.items.map(t => t.id)).not.toContain(parent.id);
+  await saved.saveFilter(actor, householdA, { ...filter, definition: { type: 'predicate', field: 'title', operator: 'eq', value: "' OR TRUE --" } }, filter.id, filter.version);
+  expect((await saved.results(actor, householdA, { viewId: view.id, offset: 0, limit: 100 })).count).toBe(0);
+  await expect(saved.saveFilter(actor, householdA, filter, filter.id, filter.version)).rejects.toThrow('planning_conflict');
+  const history = await saved.history(actor, householdA, filter.id);
+  expect(history.map(h => h.version)).toEqual([1, 2]);
+  await saved.saveFilter(actor, householdA, { ...filter, definition: history[0]!.definition }, filter.id, 2);
+  expect((await saved.results(actor, householdA, { viewId: view.id, offset: 0, limit: 100 })).items.map(t => t.id)).toContain(child.id);
+  const other = (await service.findSession(sessionB))!;
+  await expect(saved.results(other, householdB, { viewId: view.id, offset: 0, limit: 10 })).rejects.toThrow('view_not_found');
+  await expect(saved.personal(other, householdB, view.id, { version: 0, favorite: false, activeFilters: [], currentPlace: null })).rejects.toThrow('view_not_found');
+  await db.insert(schema.memberships).values({ householdId: householdA, userId: userB, role: 'member' });
+  try {
+    const personal = (await saved.library(other, householdA)).personal[view.id]!;
+    expect(personal.activeFilters).toEqual([]);
+    expect(personal.favorite).toBe(false);
+    await expect(saved.personal(actor, householdA, view.id, { ...personal, currentPlace: home.id })).rejects.toThrow('planning_conflict');
+  } finally { await db.delete(schema.memberships).where((await import('drizzle-orm')).and((await import('drizzle-orm')).eq(schema.memberships.householdId, householdA), (await import('drizzle-orm')).eq(schema.memberships.userId, userB))); }
+  const reordered = await planning.reorder(actor, householdA, child.id, child.version, parent.id);
+  expect(reordered.order).toBeLessThan(parent.order);
+  await expect(planning.reorder(actor, householdA, child.id, child.version, null)).rejects.toThrow('planning_conflict');
+});
+
+it('materializes recurrence once, preserves instance edits and safely restores/deletes task trees', async () => {
+  const { TemplateService } = await import('../lifecycle/templates.js');
+  const { LifecycleService } = await import('../lifecycle/service.js');
+  const { maintainHousehold } = await import('../lifecycle/worker.js');
+  const { eq } = await import('drizzle-orm');
+  const actor = (await service.findSession(sessionA))!, actorB = (await service.findSession(sessionB))!;
+  const templates = new TemplateService(db), lifecycle = new LifecycleService(db);
+  const root = await planning.create(actor, householdA, { title: 'Winterize', startDate: '2030-10-01', deadlineDate: '2030-10-15' });
+  const a = await planning.create(actor, householdA, { title: 'Turn off pump', parentId: root.id });
+  await planning.create(actor, householdA, { title: 'Drain pipes', parentId: root.id, blockers: [a.id] });
+  const template = await templates.capture(actor, householdA, root.id, 'Winterization', { anchor: '2030-10-01', interval: 1, unit: 'years', leadDays: 14, enabled: true });
+  await maintainHousehold(db, householdA, new Date('2030-09-16T12:00Z'));
+  expect(await db.select().from(schema.occurrences).where(eq(schema.occurrences.templateId, template.id))).toHaveLength(0);
+  await Promise.all([maintainHousehold(db, householdA, new Date('2030-09-17T12:00Z')), maintainHousehold(db, householdA, new Date('2030-09-17T12:00Z'))]);
+  const occurrences = await db.select().from(schema.occurrences).where(eq(schema.occurrences.templateId, template.id));
+  expect(occurrences).toHaveLength(1);
+  const instance = await planning.get(db, householdA, occurrences[0]!.rootId, 'Europe/Stockholm');
+  const pump = instance.children.find(c => c.title === 'Turn off pump')!, drain = instance.children.find(c => c.title === 'Drain pipes')!;
+  expect((await planning.get(db, householdA, drain.id, 'Europe/Stockholm')).blockers).toEqual([pump.id]);
+  await templates.save(actor, householdA, { ...template, name: 'Updated series', nodes: template.nodes.map(n => ({ ...n, value: { ...n.value, title: n.value.title + ' future' } })) }, template.id, template.version);
+  expect((await planning.get(db, householdA, instance.id, 'Europe/Stockholm')).title).toBe('Winterize');
+  await expect(templates.createInstance(actorB, householdB, template.id, '2030-10-01')).rejects.toThrow('template_not_found');
+  const completed = await planning.patch(actor, householdA, root.id, root.version, { column: 'done' }, false, true);
+  await db.update(schema.tasks).set({ completedAt: new Date('2020-01-01') }).where(eq(schema.tasks.id, root.id));
+  await maintainHousehold(db, householdA, new Date('2030-09-17T12:00Z'));
+  expect((await db.select().from(schema.tasks).where(eq(schema.tasks.id, root.id)))[0]!.archivedAt).toBeNull();
+  await lifecycle.change(actor, householdA, root.id, completed.version, 'trash', true);
+  expect((await lifecycle.list(actor, householdA, 'trash')).filter(t => [root.id, a.id].includes(t.id))).toHaveLength(2);
+  const trashed = (await lifecycle.list(actor, householdA, 'trash')).find(t => t.id === root.id)!;
+  await lifecycle.change(actor, householdA, root.id, trashed.version, 'restore', false);
+  expect((await planning.get(db, householdA, root.id, 'Europe/Stockholm')).children).toHaveLength(2);
+  const blocker = await planning.create(actor, householdA, { title: 'Disposable blocker', column: 'done' });
+  const dependent = await planning.create(actor, householdA, { title: 'Keep dependent', blockers: [blocker.id] });
+  await expect(lifecycle.change(actor, householdA, blocker.id, blocker.version, 'delete', false)).rejects.toThrow('confirm_dependent_deletion');
+  await lifecycle.change(actor, householdA, blocker.id, blocker.version, 'delete', true);
+  expect((await planning.get(db, householdA, dependent.id, 'Europe/Stockholm')).available).toBe(false);
+});
+
+it('keeps rich content and downloads household-scoped, protects comment authors and searches comment text', async () => {
+  const { ContentService } = await import('../content/service.js');
+  const content = new ContentService(db, filesDirectory), actor = (await service.findSession(sessionA))!, other = (await service.findSession(sessionB))!;
+  const task = await planning.create(actor, householdA, { title: 'Photo and notes' });
+  const body = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Remember the brass fitting', marks: [{ type: 'bold' }] }] }] });
+  await content.comment(actor, householdA, task.id, body);
+  const saved = (await content.list(actor, householdA, task.id)).comments[0]!;
+  await expect(content.comment(other, householdB, task.id, body)).rejects.toThrow('task_not_found');
+  await db.insert(schema.memberships).values({ householdId: householdA, userId: userB, role: 'member' });
+  await expect(content.comment(other, householdA, task.id, 'Changed', saved.id, saved.version)).rejects.toThrow('comment_author_required');
+  await expect(content.removeComment(other, householdA, saved.id, saved.version)).rejects.toThrow('comment_author_required');
+  await content.comment(actor, householdA, task.id, body, saved.id, saved.version);
+  await expect(content.comment(actor, householdA, task.id, 'Stale', saved.id, saved.version)).rejects.toThrow('planning_conflict');
+  const unsafe = JSON.stringify({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'click', marks: [{ type: 'link', attrs: { href: 'javascript:alert(1)' } }] }] }] });
+  await expect(planning.patch(actor, householdA, task.id, task.version, { description: unsafe })).rejects.toThrow('invalid_rich_text');
+  const file = await content.upload(actor, householdA, task.id, { name: 'sample.png', base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=' });
+  expect(file.mime).toBe('image/png');
+  const response = await app.inject({ url: `/api/v1/households/${householdA}/files/${file.id}`, headers: headers(sessionA) });
+  expect(response.statusCode).toBe(200);
+  expect(response.headers['cache-control']).toBe('private, no-store');
+  expect((await app.inject({ url: `/api/v1/households/${householdB}/files/${file.id}`, headers: headers(sessionB) })).statusCode).toBe(404);
+  expect((await app.inject({ url: `/api/v1/households/${householdA}/files/${file.id}` })).statusCode).toBe(401);
+  const search = await app.inject({ method: 'POST', url: `/api/v1/households/${householdA}/search`, headers: headers(sessionA), payload: { query: 'brass fitting', definition: null, currentPlace: null } });
+  expect(search.statusCode).toBe(200);
+  expect(search.json().tasks.map((result: { task: { id: string } }) => result.task.id)).toContain(task.id);
 });

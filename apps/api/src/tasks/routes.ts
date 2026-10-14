@@ -34,6 +34,7 @@ export async function registerTaskRoutes(server: FastifyInstance, accounts: Acco
       throw error;
     }
   });
+  app.post('/api/v1/households/:householdId/tasks/:id/order', { schema: { params: item, body: z.object({ baseVersion: z.number().int().min(1), beforeId: z.uuid().nullable() }), response: { 200: taskSchema } } }, async r => service.reorder(await actor(r), r.params.householdId, r.params.id, r.body.baseVersion, r.body.beforeId));
   app.get('/api/v1/households/:householdId/entities', { schema: { params: scope, response: { 200: z.array(entitySchema) } } }, async request => service.entityList(await actor(request), request.params.householdId));
   app.post('/api/v1/households/:householdId/entities', { schema: { params: scope, body: entityCreateSchema, response: { 200: entitySchema } } }, async request => service.entityWrite(await actor(request), request.params.householdId, request.body));
   app.patch('/api/v1/households/:householdId/entities/:id', { schema: { params: item, body: entityPatchSchema, response: { 200: entitySchema } } }, async request => service.entityWrite(await actor(request), request.params.householdId, request.body.changes, request.params.id, request.body.baseVersion));

@@ -1,3 +1,6 @@
+import { occurrences, templates } from '../lifecycle/schema.js';
+import { files } from '../content/schema.js';
+import { inspectRichText } from '../content/rich-text.js';
 import { and, asc, eq, inArray, isNull, max, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { taskFields, taskSchema, entitySchema, inheritedFields, type Task, type TaskChanges, type TaskFields, type taskCreateSchema, type entityCreateSchema, type entityPatchSchema } from '@tendly/shared';
@@ -52,11 +55,14 @@ export class TaskService {
       ])),
       blockers: (localDependencies.get(row.id) ?? []).map(d => d.blocker).sort(), related: (related.get(row.id) ?? []).sort(),
     }) })), timezone);
+    const series = await db.select({ rootId: occurrences.rootId, templateId: occurrences.templateId }).from(occurrences).innerJoin(templates, eq(templates.id, occurrences.templateId)).where(eq(templates.householdId, householdId));
     const byId = new Map(rows.map(row => [row.id, row]));
     return { rows, graph, task: (id: string) => {
       const row = byId.get(id);
       if (!row || row.trashedAt) throw new AccountError('task_not_found', 404);
-      return taskSchema.parse({ ...row, ...graph.details(id), createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), completedAt: row.completedAt?.toISOString() ?? null });
+      const details = graph.details(id);
+      const recurrenceTemplateId = series.find(s => s.rootId === id || details.ancestors.some(a => a.id === s.rootId))?.templateId ?? null;
+      return taskSchema.parse({ ...row, ...details, recurrenceTemplateId, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), completedAt: row.completedAt?.toISOString() ?? null });
     } };
   }
   async hydrate(db: QueryDatabase, rows: Row[], timezone: string): Promise<Task[]> {
@@ -85,7 +91,20 @@ export class TaskService {
       return { items: selected.slice(0, limit), nextOffset: selected.length > limit ? offset + limit : null };
     }, { isolationLevel: 'repeatable read' });
   }
+  async validateContent(db: QueryDatabase, householdId: string, value: string) {
+    const content = inspectRichText(value);
+    if (content.mentions.some(id => !z.uuid().safeParse(id).success)) throw new AccountError('invalid_rich_text');
+    if (content.mentions.length) {
+      const found = await db.select().from(memberships).where(and(eq(memberships.householdId, householdId), inArray(memberships.userId, content.mentions)));
+      if (found.length !== content.mentions.length) throw new AccountError('invalid_task_reference');
+    }
+    if (content.images.length) {
+      const found = await db.select().from(files).where(and(eq(files.householdId, householdId), inArray(files.id, content.images)));
+      if (found.length !== content.images.length) throw new AccountError('invalid_task_reference');
+    }
+  }
   async validate(db: QueryDatabase, householdId: string, value: TaskFields, previous?: Task) {
+    await this.validateContent(db, householdId, value.description);
     if ((!value.startDate && value.startTime) || (!value.deadlineDate && value.deadlineTime)) throw new AccountError('date_required');
     const expected = [
       ...(value.epicId ? [{ id: value.epicId, kind: 'epic' }] : []),
@@ -125,7 +144,7 @@ export class TaskService {
     await db.delete(taskAssignees).where(eq(taskAssignees.taskId, id));
     if (value.assignees.length) await db.insert(taskAssignees).values([...new Set(value.assignees)].map(userId => ({ taskId: id, userId })));
   }
-  async graphCollections(db: Transaction, id: string, value: TaskFields, actorId: string) {
+  async graphCollections(db: Transaction, id: string, value: TaskFields, actorId: string | null) {
     await db.delete(taskEntityExclusions).where(eq(taskEntityExclusions.taskId, id));
     const excluded = [...new Set([...value.placeExclusions, ...value.resourceExclusions, ...value.tagExclusions])];
     if (excluded.length) await db.insert(taskEntityExclusions).values(excluded.map(entityId => ({ taskId: id, entityId })));
@@ -222,6 +241,29 @@ export class TaskService {
       if (next.column === 'done' && current.column !== 'done' && resolved.unfinishedDescendants && !confirmDescendants) throw new AccountError('confirm_descendants', 409);
       await tx.insert(taskActivities).values({ taskId: id, actorId: actor.user.id, version, fields: [...changed] });
       return resolved;
+    });
+  }
+  async reorder(actor: Actor, householdId: string, id: string, baseVersion: number, beforeId: string | null) {
+    return this.db.transaction(async tx => {
+      const household = await this.scope(tx, actor, householdId, true);
+      const rows = await tx.select().from(tasks).where(and(eq(tasks.householdId, householdId), isNull(tasks.trashedAt))).orderBy(asc(tasks.order), asc(tasks.id));
+      const current = rows.find(r => r.id === id);
+      if (!current) throw new AccountError('task_not_found', 404);
+      if ((current.fieldVersions.order ?? 1) > baseVersion || baseVersion > current.version) throw new AccountError('planning_conflict', 409);
+      if (beforeId === id) return this.get(tx, householdId, id, household.timezone);
+      const others = rows.filter(r => r.id !== id);
+      const index = beforeId ? others.findIndex(r => r.id === beforeId) : others.length;
+      if (index < 0) throw new AccountError('invalid_task_reference');
+      const next = others[index]?.order, previous = others[index - 1]?.order;
+      const order = previous === undefined ? (next ?? 1024) - 1024 : next === undefined ? previous + 1024 : (previous + next) / 2;
+      // Rebalance only when floating-point gaps are exhausted. Relative order is unchanged.
+      if (order === previous || order === next) {
+        others.splice(index, 0, current);
+        for (const [i, row] of others.entries()) await tx.update(tasks).set({ order: (i + 1) * 1024 }).where(eq(tasks.id, row.id));
+      } else await tx.update(tasks).set({ order }).where(eq(tasks.id, id));
+      await tx.update(tasks).set({ version: current.version + 1, fieldVersions: { ...current.fieldVersions, order: current.version + 1 }, updatedAt: new Date() }).where(eq(tasks.id, id));
+      await tx.insert(taskActivities).values({ taskId: id, actorId: actor.user.id, version: current.version + 1, fields: ['order'] });
+      return this.get(tx, householdId, id, household.timezone);
     });
   }
   async entityList(actor: Actor, householdId: string) {
