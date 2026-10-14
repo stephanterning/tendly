@@ -7,9 +7,9 @@ function defined<T extends object>(value: T) {
 export class EditFailure extends Error {
   constructor(message: string, readonly current?: Task, readonly fields?: string[]) { super(message); }
 }
-export async function patchTask(householdId: string, task: Task, changes: TaskChanges, confirmUnavailable = false) {
+export async function patchTask(householdId: string, task: Task, changes: TaskChanges, confirmUnavailable = false, confirmDescendants = false) {
   const response = await api.PATCH('/api/v1/households/{householdId}/tasks/{id}', {
-    params: { path: { householdId, id: task.id } }, body: { baseVersion: task.version, changes: defined(changes), confirmUnavailable },
+    params: { path: { householdId, id: task.id } }, body: { baseVersion: task.version, changes: defined(changes), confirmUnavailable, confirmDescendants },
   }).catch(() => { throw new EditFailure('network_error'); });
   if (response.error) {
     const error = response.error;

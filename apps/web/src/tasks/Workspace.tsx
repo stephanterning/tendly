@@ -38,21 +38,23 @@ export function Workspace({ account, refresh, link, clearLink, useInvitation }: 
   const entities = useQuery({ queryKey: ['planning', id, 'entities'], enabled: !!id, queryFn: () => result(api.GET('/api/v1/households/{householdId}/entities', { params: { path: { householdId: id } } })) });
   const members = useQuery({ queryKey: ['planning', id, 'members'], enabled: !!id, queryFn: () => result(api.GET('/api/v1/households/{id}/members', { params: { path: { id } } })) });
   const listView = view === 'now' ? 'now' : 'board';
+  const [showSubtasks, setShowSubtasks] = useState(false);
   const list = useInfiniteQuery<{ items: Task[]; nextOffset: number | null }>({
-    queryKey: ['planning', id, 'tasks', listView], enabled: !!id && (view === 'now' || view === 'board'),
+    queryKey: ['planning', id, 'tasks', listView, showSubtasks], enabled: !!id && (view === 'now' || view === 'board'),
     initialPageParam: 0, getNextPageParam: (last: { items: Task[]; nextOffset: number | null }) => last.nextOffset ?? undefined,
-    queryFn: ({ pageParam }) => result(api.GET('/api/v1/households/{householdId}/tasks', { params: { path: { householdId: id }, query: { view: listView, offset: Number(pageParam), limit: 100 } } })),
+    queryFn: ({ pageParam }) => result(api.GET('/api/v1/households/{householdId}/tasks', { params: { path: { householdId: id }, query: { view: listView, includeSubtasks: showSubtasks ? 'true' : 'false', offset: Number(pageParam), limit: 100 } } })),
     refetchInterval: 30_000,
   });
   const detail = useQuery({ queryKey: ['planning', id, 'task', selected], enabled: !!id && !!selected, queryFn: () => result(api.GET('/api/v1/households/{householdId}/tasks/{id}', { params: { path: { householdId: id, id: selected! } } })) });
   const items = list.data?.pages.flatMap(page => page.items) ?? [];
   async function saved(task: Task) {
     queries.setQueryData(['planning', id, 'task', task.id], task);
-    await queries.invalidateQueries({ queryKey: ['planning', id, 'tasks'] });
+    await queries.invalidateQueries({ queryKey: ['planning', id] });
   }
-  async function change(base: Task, changes: TaskChanges, confirmed = false) {
-    const next = await patchTask(id, base, changes, confirmed);
-    const inverse = Object.fromEntries(Object.keys(changes).map(key => [key, base[key as keyof Task]])) as TaskChanges;
+  async function change(base: Task, changes: TaskChanges, confirmed = false, confirmDescendants = false) {
+    const next = await patchTask(id, base, changes, confirmed, confirmDescendants);
+    const inverse = Object.fromEntries(Object.keys(changes).map(key => [key, base.local[key as keyof typeof base.local]])) as TaskChanges;
+    if (JSON.stringify(next.local.inherit) !== JSON.stringify(base.local.inherit)) inverse.inherit = base.local.inherit;
     if (changes.estimateMinutes !== undefined && next.size !== base.size) inverse.size = base.size;
     setHistory(old => [...old.slice(-19), { current: next, inverse, forward: changes }]); setRedo([]);
     await saved(next);
@@ -61,8 +63,8 @@ export function Workspace({ account, refresh, link, clearLink, useInvitation }: 
   async function toggle(task: Task, confirmed = false) {
     if (mutationBusy.current) return;
     mutationBusy.current = true; setError('');
-    try { await change(task, { column: task.column === 'done' ? 'reopen' : 'done' }, confirmed); setConfirmStart(null); setNotice('changed'); }
-    catch (e) { if (e instanceof EditFailure && e.message === 'confirm_unavailable') { setConfirmStart(task); return; } setError(e instanceof EditFailure && e.message === 'task_conflict' ? 'conflictTitle' : e instanceof Error ? e.message : 'operation_failed'); await list.refetch(); }
+    try { await change(task, { column: task.column === 'done' ? 'reopen' : 'done' }, confirmed, confirmed); setConfirmStart(null); setNotice('changed'); }
+    catch (e) { if (e instanceof EditFailure && ['confirm_unavailable', 'confirm_descendants'].includes(e.message)) { setConfirmStart(task); return; } setError(e instanceof EditFailure && e.message === 'task_conflict' ? 'conflictTitle' : e instanceof Error ? e.message : 'operation_failed'); await list.refetch(); }
     finally { mutationBusy.current = false; }
   }
   async function undo(isRedo = false) {
@@ -107,6 +109,7 @@ export function Workspace({ account, refresh, link, clearLink, useInvitation }: 
           {!items.length && id && <div className="empty-state"><div className="empty-symbol"><House size={30} /></div><h2>{t('noTasks')}</h2><p>{t('noNowTasks')}</p><button onClick={() => setView('board')}>{t('board')}</button></div>}
           {items.map(task => <TaskCard key={task.id} task={task} entities={entities.data ?? []} members={members.data ?? []} open={() => setSelected(task.id)} complete={() => void toggle(task)} />)}
         </div> : <>
+          <label className="check-label"><input type="checkbox" checked={showSubtasks} onChange={e => setShowSubtasks(e.target.checked)} />{t('showSubtaskCards')}</label>
           <label className="mobile-column-select">{t('column')}<select value={column} onChange={e => setColumn(e.target.value as TaskColumn)}>{columns.map(c => <option key={c} value={c}>{t('column_' + c)}</option>)}</select></label>
           <div className="board" onTouchStart={e => { swipeStart.current = { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY }; }} onTouchEnd={e => {
             const dx = e.changedTouches[0]!.clientX - swipeStart.current.x, dy = e.changedTouches[0]!.clientY - swipeStart.current.y;
@@ -130,9 +133,13 @@ export function Workspace({ account, refresh, link, clearLink, useInvitation }: 
       const task = await result(api.POST('/api/v1/households/{householdId}/tasks', { params: { path: { householdId: id } }, body: value }));
       await saved(task); setCapture(null); setCreatedId(task.id); setNotice('created');
     }} />}
-    {confirmStart && <Dialog open onOpenChange={open => { if (!open) setConfirmStart(null); }} title={t('reopen')}><p>{t('confirm_unavailable')}</p><button className="primary" onClick={() => void toggle(confirmStart, true)}>{t('startAnyway')}</button></Dialog>}
+    {confirmStart && <Dialog open onOpenChange={open => { if (!open) setConfirmStart(null); }} title={t(confirmStart.column === 'done' ? 'reopen' : 'complete')}><p>{t(confirmStart.column === 'done' ? 'confirm_unavailable' : 'confirm_descendants')}</p><button className="primary" onClick={() => void toggle(confirmStart, true)}>{t(confirmStart.column === 'done' ? 'startAnyway' : 'completeAnyway')}</button></Dialog>}
     {selected && detail.isError && <Dialog open onOpenChange={open => { if (!open) setSelected(null); }} title={t('taskDetails')}><p role="alert">{t('task_not_found')}</p><button onClick={() => void detail.refetch()}>{t('retry')}</button></Dialog>}
-    {selected && detail.data && household && <TaskEditor key={detail.data.id} task={detail.data} entities={entities.data ?? []} members={members.data ?? []} timezone={household.timezone} onSave={change} onRefresh={task => { void saved(task); }} onClose={() => setSelected(null)} />}
+    {selected && detail.data && household && <TaskEditor householdId={id} onOpen={setSelected} onCreated={task => { void saved(task); }} onToggle={async childId => {
+      const child = await result(api.GET('/api/v1/households/{householdId}/tasks/{id}', { params: { path: { householdId: id, id: childId } } }));
+      try { await change(child, { column: child.column === 'done' ? 'reopen' : 'done' }); }
+      catch (error) { if (error instanceof EditFailure && ['confirm_unavailable', 'confirm_descendants'].includes(error.message)) setConfirmStart(child); else throw error; }
+    }} key={detail.data.id} task={detail.data} entities={entities.data ?? []} members={members.data ?? []} timezone={household.timezone} onSave={change} onRefresh={task => { void saved(task); }} onClose={() => setSelected(null)} />}
   </div>;
 }
 function TaskCard({ task, entities, members, open, complete }: { task: Task; entities: Entity[]; members: Member[]; open: () => void; complete: () => void }) {
@@ -142,6 +149,8 @@ function TaskCard({ task, entities, members, open, complete }: { task: Task; ent
     <button className="card-open" onClick={open} aria-label={task.title}>
       {epic && <span className="card-icon"><EntityIcon name={epic.icon} size={26} /></span>}
       <span className="card-content"><strong>{task.title}</strong><span className="card-metadata">
+        {task.progress.total > 0 && <span aria-label={t('subtaskProgress', task.progress)}>{task.progress.done}/{task.progress.total}</span>}
+        {task.parentId && <span title={task.ancestors.map(a => a.title).join(' › ')}>↳ {task.ancestors.at(-1)?.title}</span>}
         {task.high && <span title={t('high')}><Flag size={13} aria-label={t('high')} /></span>}
         {task.deadlineDate && <span className={task.overdue ? 'deadline overdue' : 'deadline'}>{task.overdue && <span>{t('overdue')} · </span>}{new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(task.deadlineDate + 'T12:00:00Z'))}</span>}
         {!task.available && <span title={t('unavailable')}><Clock3 size={13} />{t('unavailable')}</span>}
