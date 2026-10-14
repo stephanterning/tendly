@@ -13,7 +13,7 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "test": "vitest run --exclude \"**/*.integration.test.ts\" --exclude \"tests/**\"",
-    "test:integration": "vitest run apps/api/src/db/migrate.integration.test.ts apps/api/src/accounts/accounts.integration.test.ts",
+    "test:integration": "vitest run apps/api/src/db/migrate.integration.test.ts apps/api/src/accounts/accounts.integration.test.ts apps/api/src/tasks/tasks.integration.test.ts",
     "check": "pnpm build && pnpm lint && pnpm typecheck && pnpm test",
     "api:generate": "pnpm --filter @tendly/shared build && pnpm --filter @tendly/api generate && openapi-typescript packages/shared/openapi.json -o packages/shared/src/generated/api.ts",
     "db:generate": "pnpm --filter @tendly/api db:generate",
