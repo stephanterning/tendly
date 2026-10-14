@@ -1,6 +1,6 @@
 # Tendly operations
 
-Stage 2 provides account setup and household membership. This is not yet the complete M1 VP; task workflows and the full backup/restoration drill remain later stages.
+This guide covers the self-hosted VP 1.0.0, including first setup, everyday operation and manual recovery.
 
 ## Build and start
 
@@ -22,7 +22,7 @@ forwarded host input. Use a stable hostname; changing it impacts passkeys.
 
 Compose starts PostgreSQL, waits for health, runs the locked migration job once, then
 starts API/worker/web. Named volumes persist PostgreSQL and attachment storage. The attachment volume is writable by the non-root API user and its persistence is
-checked in CI. Attachment upload/download routes arrive in Stage 7.
+checked in CI. Authenticated attachment routes support files, images and profile photos.
 
 Check `docker compose ps` and `docker compose logs`. Health endpoints separate process
 liveness from database readiness. Worker health requires a recent successful DB check.
@@ -34,11 +34,10 @@ CI/development installations.
 
 CI validates contracts, lint/types/build, focused tests, real PostgreSQL migrations,
 and Compose build/restart checks. Version tags `vX.Y.Z` run these checks again before
-publishing amd64/arm64 API/worker/web images to GHCR. No release images have been
-published by Stage 1. Never reuse a released tag; record image digests in release notes.
+publishing amd64/arm64 API/worker/web images to GHCR. Check GitHub Releases for published tags; a local development build is not a registry release. Never reuse a released tag; record image digests in release notes.
 Registry owners should restrict package/tag overwrite permissions.
 
-For a future published version, set TENDLY_VERSION to its full tag, pull the images,
+For a published version, set TENDLY_VERSION to its full tag, pull the images,
 and run Compose without building. There are no automatic upgrades. Before upgrading,
 back up the database, attachment files and required secrets. Recreate the one-shot
 migration service for each deployment so a previous exited container is not mistaken
@@ -55,13 +54,10 @@ A migration failure must be investigated before starting application services.
 Downgrading code does not reverse schema changes. Restore a compatible backup instead
 of assuming automatic rollback.
 
-## Recovery commitment
+## Recovery
 
-M1 includes consistent manual PostgreSQL-plus-files export, required configuration/key
-inventory, and restoration to a fresh Docker installation. Use a maintenance window to
-pause writes/workers while capturing the dump and files. Validate records and file
-contents after restoration. This is an acceptance gate, not a claim that Stage 1 has
-already passed AC-24. Integrated encrypted cloud backup remains M4.
+Use the manual backup and recovery scripts below. The complete export includes the
+database, attachment volume and separately preserved configuration/secrets.
 
 ## First account and email
 
@@ -143,3 +139,64 @@ to the clipboard, but server expiration and one-use consumption remain authorita
 
 See [optional place maps](operations/maps.md) for tile-provider configuration,
 self-hosted tiles, attribution and network behavior.
+
+## Manual backup and recovery (v1.0)
+
+Run these commands from the repository directory containing `compose.yaml`. Use the
+same `.env`, Compose project name and image version as the running installation.
+
+```sh
+bash infrastructure/scripts/backup.sh /absolute/path/to/tendly-backup-2026-10-14
+```
+
+The script stops API and worker writes, takes a PostgreSQL custom-format dump, archives
+the attachment volume (including profile photos), records image versions and checksums,
+and restarts the writers even if the backup fails. Expect a short maintenance window.
+The backup contains private household data; store it with restricted access on a
+separate device. It is not encrypted by this script.
+
+Preserve `.env` separately and securely, especially `APP_ENCRYPTION_KEY` (needed to
+read encrypted SMTP configuration), database credentials, `PUBLIC_ORIGIN`, Compose
+project name and image version. Passkeys are tied to the hostname: keep the original
+HTTPS hostname when moving hosts. The database includes accounts, credentials, shared
+filters, views, templates, recurrence deduplication records and job state. File bytes
+live in the attachments archive; neither half alone is a complete backup.
+
+On a fresh compatible host, obtain the matching Tendly version, restore the protected
+`.env`, and pull/build its images before running:
+
+```sh
+bash infrastructure/scripts/restore.sh /absolute/path/to/tendly-backup-2026-10-14
+```
+
+Restore verifies checksums and refuses a non-empty destination database. Use new
+Compose volumes/project for a drill; never remove the source installation's volumes.
+Only restore trusted backups. The script restores PostgreSQL and files, then runs the
+normal migration/start sequence. If an interrupted restore leaves a partial database,
+start again with a new empty destination. Verify passkey sign-in or CLI recovery,
+household membership, representative tasks, shared views, series and a downloaded
+attachment. Keep the source backup until that verification succeeds.
+
+Code downgrades do not reverse database migrations. Recover onto the backed-up image
+version and data together. Automated/cloud backup, retention scheduling and encryption
+configuration in the UI remain v1.3 work.
+
+## Everyday operation
+
+- **More → Views and filters:** create shared Board/List views, visual filter rules,
+  restore filter versions, select quick chips and personal favorites. Current Place is
+  manually selected; no live GPS is used.
+- **Task details → Save as template / series:** capture the whole subtree. Series
+  creation runs every minute, normally 14 days ahead. Calendar dates clamp from the
+  original anchor, and job retries retain one occurrence per scheduled date.
+- **More → Archive and Trash:** restore records; household administrators configure
+  completion age and Trash retention, or explicitly delete permanently. Missing
+  dependency targets stay unresolved. Parent tasks with unfinished descendants are
+  not automatically archived.
+- Attachments are limited to 16 MiB each. Recognized PNG/JPEG/GIF/WebP files have inline
+  previews; other files download as attachments. Files are authenticated on every
+  request and never put in the service worker cache. Orphan bytes are cleaned after a
+  one-day safety period so cleanup cannot race an in-flight upload.
+- Install Tendly from the browser's app/home-screen menu over HTTPS. It is online-first;
+  the offline screen offers reconnection and does not queue edits. WebSocket revision
+  signals refresh shared data, with automatic reconnect and scoped access rechecks.
