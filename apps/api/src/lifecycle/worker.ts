@@ -54,8 +54,14 @@ export async function registerLifecycleJobs(boss: PgBoss, config: ReturnType<typ
   await boss.work('household-maintenance', async () => {
     const households = await db.select({ id: schema.households.id }).from(schema.households);
     // Independent transactions let one household retry without duplicating another household's instances.
-    for (const household of households) await maintainHousehold(db, household.id);
+    const failures: unknown[] = [];
+    for (const household of households) {
+      try { await maintainHousehold(db, household.id); }
+      catch (error) { failures.push(error); }
+    }
     await cleanOrphanFiles(db, '/data/attachments');
+    // A broken series must not starve later households; still fail the job so pg-boss retries it.
+    if (failures.length) throw new AggregateError(failures, 'Household maintenance needs retry');
   });
   await boss.schedule('household-maintenance', '* * * * *');
   return () => pool.end();
