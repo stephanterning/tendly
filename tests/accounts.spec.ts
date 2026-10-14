@@ -86,17 +86,17 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await page.getByLabel('Port', { exact: true }).fill('1025');
   await page.getByLabel('Sender email address').fill('tendly@example.test');
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByRole('status')).toContainText('Changes saved');
+  await expect(page.getByRole('status').filter({ hasText: 'Changes saved' })).toBeVisible();
   await page.getByRole('button', { name: 'Your account', exact: true }).click();
   await page.getByRole('button', { name: 'Send verification email' }).click();
-  await expect(page.getByRole('status')).toContainText('Email sent');
+  await expect(page.getByRole('status').filter({ hasText: 'Email sent' })).toBeVisible();
   await page.goto(await mailLink('owner@example.test', 'verify_email'));
   await page.getByRole('button', { name: 'Verify email address', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Send verification email' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Household', exact: true }).click();
   await page.getByLabel('Email address', { exact: true }).fill('member@example.test');
   await page.getByRole('button', { name: 'Send invitation' }).click();
-  await expect(page.getByRole('status')).toContainText('Email sent');
+  await expect(page.getByRole('status').filter({ hasText: 'Email sent' })).toBeVisible();
   const invitation = await mailLink('member@example.test', 'invite');
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US' });
   const member = await mobile.newPage();
@@ -121,7 +121,7 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await recovered.getByRole('button', { name: 'Lost access to your passkeys?' }).click();
   await recovered.getByLabel('Email address').fill('member@example.test');
   await recovered.getByRole('button', { name: 'Send recovery link' }).click();
-  await expect(recovered.getByRole('status')).toContainText('If a verified account');
+  await expect(recovered.getByRole('status').filter({ hasText: 'If a verified account' })).toBeVisible();
   await recovered.goto(await mailLink('member@example.test', 'recovery'));
   await recovered.getByRole('button', { name: 'Create a new passkey', exact: true }).click();
   await settings(recovered);
@@ -135,7 +135,7 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await page.getByRole('button', { name: 'Email settings', exact: true }).click();
   await page.getByLabel('SMTP server').fill('unavailable.invalid');
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByRole('status')).toContainText('Changes saved');
+  await expect(page.getByRole('status').filter({ hasText: 'Changes saved' })).toBeVisible();
   await recovered.goto(cli('recover', 'owner@example.test'));
   await recovered.getByRole('button', { name: 'Create a new passkey', exact: true }).click();
   await settings(recovered);

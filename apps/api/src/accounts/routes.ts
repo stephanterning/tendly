@@ -248,7 +248,7 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
       await householdAccess(db, await actor(request), request.params.id);
     },
   }, (socket, request) => {
-    let revision = -1, checking = false;
+    let revision = -1, checking = false, lastPing = Date.now();
     const tick = async () => {
       if (checking) return;
       checking = true;
@@ -256,6 +256,8 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
         // A WebSocket outlives its upgrade request: never reuse the request's cached session.
         const current = await service.findSession(request.cookies[sessionName]);
         await householdAccess(db, current, request.params.id);
+        // Idle households still need traffic so reverse proxies keep the upgraded connection alive.
+        if (Date.now() - lastPing >= 20_000) { socket.ping(); lastPing = Date.now(); }
         const [household] = await db.select({ revision: households.revision }).from(households).where(eq(households.id, request.params.id));
         if (household && household.revision !== revision) { revision = household.revision; socket.send(JSON.stringify({ type: 'changed', revision })); }
       } catch { socket.close(1008, 'Access revoked'); }
