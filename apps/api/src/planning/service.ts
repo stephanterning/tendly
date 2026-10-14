@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { defaultView, filterDocumentSchema, viewDocumentSchema, personalViewSchema, type FilterAst, type PersonalView, type ViewDefinition } from '@tendly/shared';
 import type { Actor } from '../accounts/access.js';
 import type { Database, QueryDatabase } from '../accounts/database.js';
@@ -82,7 +82,7 @@ export class PlanningService {
     await this.tasks.scope(this.db, actor, householdId);
     const [filter] = await this.db.select().from(filters).where(and(eq(filters.id, id), eq(filters.householdId, householdId)));
     if (!filter) throw new AccountError('filter_not_found', 404);
-    return (await this.db.select().from(filterHistory).where(eq(filterHistory.filterId, id))).map(r => ({ version: r.version, definition: r.definition, createdAt: r.createdAt.toISOString() }));
+    return (await this.db.select().from(filterHistory).where(eq(filterHistory.filterId, id)).orderBy(asc(filterHistory.version))).map(r => ({ version: r.version, definition: r.definition, createdAt: r.createdAt.toISOString() }));
   }
   async remove(actor: Actor, householdId: string, kind: 'filter' | 'view', id: string, version: number) {
     return this.db.transaction(async tx => {

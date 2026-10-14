@@ -1,4 +1,5 @@
 import { tasks, taskAssignees, taskActivities } from '../tasks/schema.js';
+import { templates } from '../lifecycle/schema.js';
 import { randomUUID } from 'node:crypto';
 import { and, eq, gt, isNull, lt } from 'drizzle-orm';
 import {
@@ -218,6 +219,10 @@ export class AccountService {
           await tx.insert(taskActivities).values({ taskId: task.id, actorId: current.user.id, version: task.version + 1, fields: ['assignees'] });
         }
         await tx.delete(memberships).where(scope);
+        const saved = await tx.select().from(templates).where(eq(templates.householdId, params.id));
+        for (const template of saved) if (template.nodes.some(node => node.value.assignees.includes(params.userId))) {
+          await tx.update(templates).set({ version: template.version + 1, nodes: template.nodes.map(node => ({ ...node, value: { ...node.value, assignees: node.value.assignees.filter(id => id !== params.userId) } })) }).where(eq(templates.id, template.id));
+        }
       }
       await tx.insert(securityEvents).values({ actorId: current.user.id, subjectId: target.userId, action: role ? 'household_role_changed' : 'household_member_removed' });
     });

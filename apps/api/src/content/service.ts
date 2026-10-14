@@ -1,3 +1,4 @@
+import { fileIsReferenced } from './references.js';
 import { inspectRichText } from './rich-text.js';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile, unlink, readFile } from 'node:fs/promises';
@@ -80,6 +81,7 @@ export class ContentService {
       await this.tasks.scope(tx, actor, householdId, true);
       const [file] = await tx.select().from(files).where(and(eq(files.id, id), eq(files.householdId, householdId)));
       if (!file) throw new AccountError('file_not_found', 404);
+      if (await fileIsReferenced(tx, householdId, id)) throw new AccountError('file_in_use');
       await tx.delete(files).where(eq(files.id, id));
     });
     // Metadata commits first. A crash may leave an orphan file, never a live record pointing at deleted bytes.

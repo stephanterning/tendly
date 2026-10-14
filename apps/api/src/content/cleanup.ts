@@ -1,9 +1,18 @@
-import { users } from '../accounts/schema.js';
+import { eq, isNull } from 'drizzle-orm';
+import { fileIsReferenced } from './references.js';
+import { users, households } from '../accounts/schema.js';
 import { readdir, stat, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Database } from '../accounts/database.js';
 import { files } from './schema.js';
 export async function cleanOrphanFiles(db: Database, directory: string) {
+  // A template or copied rich-text document may still reference an image after its original task is deleted.
+  for (const file of await db.select().from(files).where(isNull(files.taskId))) {
+    await db.transaction(async tx => {
+      const [household] = await tx.select().from(households).where(eq(households.id, file.householdId)).for('update');
+      if (household && !await fileIsReferenced(tx, household.id, file.id)) await tx.delete(files).where(eq(files.id, file.id));
+    });
+  }
   const known = new Set((await db.select({ id: files.id }).from(files)).map(f => f.id));
   for (const user of await db.select({ avatar: users.avatar }).from(users)) if (user.avatar) known.add(user.avatar);
   const names = await readdir(directory).catch(() => [] as string[]);

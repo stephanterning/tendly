@@ -4056,6 +4056,7 @@ export interface paths {
                         places?: string[];
                         resources?: string[];
                         tags?: string[];
+                        subtasks?: string[];
                         confirmUnavailable?: boolean;
                         confirmDescendants?: boolean;
                     };

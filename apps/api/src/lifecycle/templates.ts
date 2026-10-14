@@ -32,7 +32,7 @@ export class TemplateService {
       return this.write(tx, householdId, { name, nodes, recurrence });
     });
   }
-  async validate(tx: Transaction, householdId: string, nodes: TemplateNode[]) {
+  async validate(tx: Transaction, householdId: string, nodes: TemplateNode[], retainedTemplate = false) {
     const ids = new Set(nodes.map(n => n.sourceId));
     if (ids.size !== nodes.length || nodes.filter(n => !n.value.parentId).length !== 1 || nodes.some(n => n.value.parentId && !ids.has(n.value.parentId))) throw new AccountError('invalid_template_tree');
     resolveGraph(nodes.map(n => ({ id: n.sourceId, local: n.value, trashed: false })), 'UTC').validateDependencies();
@@ -40,7 +40,7 @@ export class TemplateService {
       const external = [...node.value.blockers, ...node.value.related].filter(id => !ids.has(id));
       const found = external.length ? await tx.select().from(tasks).where(inArray(tasks.id, external)) : [];
       if (found.some(t => t.householdId !== householdId)) throw new AccountError('invalid_task_reference');
-      await this.tasks.validate(tx, householdId, { ...node.value, startDate: node.startOffset === null ? null : '2000-01-01', startTime: node.startOffset === null ? null : node.value.startTime, deadlineDate: node.deadlineOffset === null ? null : '2000-01-01', deadlineTime: node.deadlineOffset === null ? null : node.value.deadlineTime, parentId: null, blockers: [], related: [] });
+      await this.tasks.validate(tx, householdId, { ...node.value, startDate: node.startOffset === null ? null : '2000-01-01', startTime: node.startOffset === null ? null : node.value.startTime, deadlineDate: node.deadlineOffset === null ? null : '2000-01-01', deadlineTime: node.deadlineOffset === null ? null : node.value.deadlineTime, parentId: null, blockers: [], related: [] }, undefined, retainedTemplate);
     }
   }
   async write(tx: Transaction, householdId: string, value: { name: string; nodes: TemplateNode[]; recurrence: Recurrence | null }, id?: string, version?: number) {
@@ -67,7 +67,8 @@ export class TemplateService {
       const [existing] = await tx.select().from(occurrences).where(and(eq(occurrences.templateId, template.id), eq(occurrences.date, date)));
       if (existing) return existing.rootId;
     }
-    await this.validate(tx, template.householdId, template.nodes);
+    // Archiving an entity hides new assignments but preserves existing template references.
+    await this.validate(tx, template.householdId, template.nodes, true);
     const nodes = materializeNodes(template.nodes, date, randomUUID), rootId = nodes.find(n => !n.value.parentId)!.id;
     const [last] = await tx.select({ order: max(tasks.order) }).from(tasks).where(eq(tasks.householdId, template.householdId));
     const remaining = new Map(nodes.map(n => [n.id, n])), written = new Set<string>();
