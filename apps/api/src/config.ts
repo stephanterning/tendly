@@ -1,5 +1,6 @@
 import { z } from 'zod';
 const schema = z.object({
+  APP_ENCRYPTION_KEY: z.string().regex(/^[0-9a-f]{64}$/i),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   DATABASE_URL: z.url().refine((value) => URL.canParse(value) && ['postgres:', 'postgresql:'].includes(new URL(value).protocol)),
   PUBLIC_ORIGIN: z.url().refine((value) => {
