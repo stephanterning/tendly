@@ -13,9 +13,11 @@ it('serializes concurrent migrators and preserves data across repeated migration
     const inserted = await client.query<{ id: string }>('INSERT INTO installation DEFAULT VALUES RETURNING id');
     id = inserted.rows[0]?.id;
     expect(id).toBeDefined();
+    const migrationCount = (await client.query('SELECT * FROM drizzle.__drizzle_migrations')).rowCount;
+    expect(migrationCount).toBeGreaterThan(0);
     await migrateDatabase(url);
     expect((await client.query('SELECT id FROM installation WHERE id = $1', [id])).rowCount).toBe(1);
-    expect((await client.query('SELECT * FROM drizzle.__drizzle_migrations')).rowCount).toBe(1);
+    expect((await client.query('SELECT * FROM drizzle.__drizzle_migrations')).rowCount).toBe(migrationCount);
   } finally {
     if (id) await client.query('DELETE FROM installation WHERE id = $1', [id]);
     await client.end();

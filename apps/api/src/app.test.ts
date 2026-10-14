@@ -14,11 +14,13 @@ describe('operational boundary', () => {
     } finally { await app.close(); }
   });
   it('documents the same healthy response the server emits', async () => {
-    const app = await buildApp({ checkDatabase: async () => {} });
+    let databaseClosed = false;
+    const app = await buildApp({ checkDatabase: async () => {}, closeDatabase: async () => { databaseClosed = true; } });
     try {
       expect((await app.inject('/api/v1/health/ready')).json()).toEqual({ status: 'ok' });
       expect(app.swagger().paths).toHaveProperty('/api/v1/health/ready');
     } finally { await app.close(); }
+    expect(databaseClosed).toBe(true);
   });
   it('rejects insecure production origins and keeps configuration secrets out of errors', () => {
     expect(() => readConfig({ NODE_ENV: 'production', DATABASE_URL: 'postgres://user:secret@localhost/db', PUBLIC_ORIGIN: 'http://localhost' })).toThrow('HTTPS');
