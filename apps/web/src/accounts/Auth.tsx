@@ -66,7 +66,7 @@ export function Auth({ initialized, emailAvailable, link, refresh, clearLink }: 
       {!supported && !recover && <p className="alert" role="alert">{t('unsupported')}</p>}
       <form onSubmit={submit}>
         <fieldset disabled={busy}>
-          {setup && <label>{t('code')}<input name="token" type="password" autoComplete="one-time-code" required autoFocus /></label>}
+          {setup && <label>{t('code')}<input name="token" type="text" autoComplete="one-time-code" autoCapitalize="none" autoCorrect="off" spellCheck={false} required autoFocus /></label>}
           {(setup || link?.purpose === 'invite') && <label>{t('name')}<input name="name" autoComplete="name" maxLength={100} required /></label>}
           {(setup || recover) && <label>{t('email')}<input name="email" type="email" autoComplete="email" required /></label>}
           {setup && <><label>{t('household')}<input name="household" maxLength={100} required /></label><label>{t('timezone')}<input name="timezone" defaultValue={Intl.DateTimeFormat().resolvedOptions().timeZone} required /></label></>}
