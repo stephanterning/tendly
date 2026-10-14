@@ -1,9 +1,11 @@
+import { lazy, Suspense } from 'react';
+const RichEditor = lazy(() => import('../content/RichEditor.js'));
 import { columns, sizes, type TaskFields as Fields, type Entity, type Task } from '@tendly/shared';
 import { useTranslation } from 'react-i18next';
 export type Member = { id: string; name: string; email: string; role: 'admin' | 'member' };
 export const emptyTask: Fields = { parentId: null, inherit: [], placeExclusions: [], resourceExclusions: [], tagExclusions: [], blockers: [], related: [], title: '', description: '', column: 'someday', epicId: null, high: false, size: null, estimateMinutes: null, startDate: null, startTime: null, deadlineDate: null, deadlineTime: null, assignees: [], places: [], resources: [], tags: [] };
-export function TaskFields({ value: local, onChange: update, entities, members, timezone, inheritance }: {
-  value: Fields; onChange: (changes: Partial<Fields>) => void; entities: Entity[]; members: Member[]; timezone: string; inheritance?: Task;
+export function TaskFields({ value: local, onChange: update, entities, members, timezone, inheritance, showDates = true, upload, disabled = false }: {
+  value: Fields; onChange: (changes: Partial<Fields>) => void; entities: Entity[]; members: Member[]; timezone: string; inheritance?: Task; showDates?: boolean; disabled?: boolean; upload?: (files: File[]) => Promise<string[]>;
 }) {
   const { t } = useTranslation();
   const value = { ...local };
@@ -39,12 +41,12 @@ export function TaskFields({ value: local, onChange: update, entities, members, 
       <label className="check-label"><input type="checkbox" checked={value.high} onChange={e => onChange({ high: e.target.checked })} />{t('high')}</label>
     </div>
     {mode('high')}
-    <label>{t('description')}<textarea rows={3} value={value.description} onChange={e => onChange({ description: e.target.value })} /></label>
+    <div><span className="field-label">{t('description')}</span><Suspense fallback={<p>{t('loading')}</p>}><RichEditor disabled={disabled} value={value.description} onChange={description => onChange({ description })} members={members} label={t('description')} upload={upload} /></Suspense></div>
     <details className="properties" open={value.assignees.length > 0 || undefined}><summary>{t('assignees')}{value.assignees.length ? ' · ' + value.assignees.length : ''}</summary>{mode('assignees')}<div className="choice-list">{members.map(member => <label className="check-label" key={member.id}><input type="checkbox" checked={value.assignees.includes(member.id)} onChange={e => onChange({ assignees: e.target.checked ? [...value.assignees, member.id].sort() : value.assignees.filter(id => id !== member.id) })} />{member.name}</label>)}</div></details>
-    <details className="properties" open={!!value.startDate || !!value.deadlineDate || undefined}><summary>{t('dates')}</summary><p className="small muted">{t('dateZone', { zone: timezone })}</p>
+    {showDates && <details className="properties" open={!!value.startDate || !!value.deadlineDate || undefined}><summary>{t('dates')}</summary><p className="small muted">{t('dateZone', { zone: timezone })}</p>
       {mode('startDate')}<div className="form-grid"><label>{t('startDate')}<input type="date" value={value.startDate ?? ''} onChange={e => onChange({ startDate: e.target.value || null, ...(e.target.value ? {} : { startTime: null }) })} /></label><label>{t('startTime')}<input type="time" disabled={!value.startDate} value={value.startTime ?? ''} onChange={e => onChange({ startTime: e.target.value || null })} /></label></div>
       {mode('deadlineDate')}<div className="form-grid"><label>{t('deadlineDate')}<input type="date" value={value.deadlineDate ?? ''} onChange={e => onChange({ deadlineDate: e.target.value || null, ...(e.target.value ? {} : { deadlineTime: null }) })} /></label><label>{t('deadlineTime')}<input type="time" disabled={!value.deadlineDate} value={value.deadlineTime ?? ''} onChange={e => onChange({ deadlineTime: e.target.value || null })} /></label></div>
-    </details>
+    </details>}
     <details className="properties"><summary>{t('planningDetails')}</summary>
       <label>{t('estimate')}<input type="number" min={1} max={525600} value={value.estimateMinutes ?? ''} onChange={e => onChange({ estimateMinutes: e.target.value ? Number(e.target.value) : null })} /></label><p className="small muted">{t('estimateHelp')}</p>
       {(['places', 'resources', 'tags'] as const).map((field, index) => {

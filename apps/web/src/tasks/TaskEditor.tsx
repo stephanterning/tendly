@@ -1,3 +1,5 @@
+import { ContentPanel, uploadFiles } from '../content/ContentPanel.js';
+import { TaskActions } from '../lifecycle/TaskActions.js';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { taskFields, type Task, type TaskChanges, type Entity } from '@tendly/shared';
@@ -5,8 +7,9 @@ import { Dialog } from '../components/ui/dialog.js';
 import { TaskFields, type Member } from './TaskFields.js';
 import { TaskStructure } from './TaskStructure.js';
 import { EditFailure } from './api.js';
-export function TaskEditor({ task, entities, members, timezone, onSave, onRefresh, onClose, householdId, onOpen, onCreated, onToggle }: {
-  householdId: string; onOpen: (id: string) => void; onCreated: (task: Task) => void; onToggle: (id: string) => Promise<void>;
+export function TaskEditor({ task, entities, members, timezone, onSave, onRefresh, onClose, householdId, onOpen, onCreated, onToggle, actorId, onSeries, onLifecycle }: {
+  onSeries: (id: string) => void; onLifecycle: (undo: { id: string; version: number; action: 'restore' | 'unarchive' }) => void;
+  actorId: string; householdId: string; onOpen: (id: string) => void; onCreated: (task: Task) => void; onToggle: (id: string) => Promise<void>;
   task: Task; entities: Entity[]; members: Member[]; timezone: string;
   onRefresh: (task: Task) => void;
   onSave: (base: Task, changes: TaskChanges, confirm?: boolean, confirmDescendants?: boolean) => Promise<Task>; onClose: () => void;
@@ -17,6 +20,7 @@ export function TaskEditor({ task, entities, members, timezone, onSave, onRefres
   const [failure, setFailure] = useState<EditFailure | null>(null);
   const [pending, setPending] = useState(false);
   const saving = useRef(false);
+  const latest = useRef(base); latest.current = base;
   const changes: TaskChanges = Object.fromEntries(Object.entries(draft).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(base.local[key as keyof typeof base.local])));
   const signature = JSON.stringify(changes);
   async function save(from = base, confirmed = false): Promise<boolean> {
@@ -26,7 +30,7 @@ export function TaskEditor({ task, entities, members, timezone, onSave, onRefres
     saving.current = true; setPending(true); setFailure(null);
     try {
       const next = await onSave(from, changes, confirmed && failure?.message === 'confirm_unavailable', confirmed && failure?.message === 'confirm_descendants');
-      setBase(next); setDraft(taskFields.parse(next.local)); return true;
+      latest.current = next; setBase(next); setDraft(taskFields.parse(next.local)); return true;
     } catch (error) {
       setFailure(error instanceof EditFailure ? error : new EditFailure('network_error')); return false;
     } finally { saving.current = false; setPending(false); }
@@ -60,8 +64,10 @@ export function TaskEditor({ task, entities, members, timezone, onSave, onRefres
       <label className="sr-only" htmlFor="task-title">{t('taskTitle')}</label>
       <textarea id="task-title" className="task-title-input" rows={2} maxLength={300} value={draft.title} onChange={e => { setDraft({ ...draft, title: e.target.value }); setFailure(null); }} />
       {base.deadlineBeyondParent && <p className="alert" role="status">{t('deadlineBeyondParent')}</p>}
-      <TaskFields inheritance={base} value={draft} onChange={changes => { setDraft({ ...draft, ...changes }); setFailure(null); }} entities={entities} members={members} timezone={timezone} />
+      <TaskFields disabled={pending} upload={async files => { try { return await uploadFiles(householdId, base.id, files); } catch (error) { setFailure(new EditFailure((error as Error).message)); return []; } }} inheritance={base} value={draft} onChange={changes => { setDraft({ ...draft, ...changes }); setFailure(null); }} entities={entities} members={members} timezone={timezone} />
     </fieldset>
     <fieldset disabled={pending}><TaskStructure task={base} draft={draft} householdId={householdId} onChange={changes => { setDraft({ ...draft, ...changes }); setFailure(null); }} onOpen={id => { void save().then(ok => { if (ok) onOpen(id); }); }} onCreated={onCreated} onToggle={onToggle} /></fieldset>
+    <ContentPanel householdId={householdId} taskId={base.id} actorId={actorId} members={members} />
+    <TaskActions timezone={timezone} onSeries={onSeries} onLifecycle={onLifecycle} task={base} householdId={householdId} flush={async () => await save() ? latest.current : null} onClose={onClose} />
   </Dialog>;
 }

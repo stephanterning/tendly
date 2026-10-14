@@ -8,3 +8,5 @@ const root = document.getElementById('root');
 if (!root) throw new Error('Missing application root');
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 createRoot(root).render(<StrictMode><QueryClientProvider client={client}><App /></QueryClientProvider></StrictMode>);
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) window.addEventListener('load', () => { void navigator.serviceWorker.register('/sw.js').catch(() => {}); });
