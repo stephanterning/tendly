@@ -248,6 +248,7 @@ export const taskCopy: Record<string, [string, string]> = {
   assignees: ['Assigned to', 'Tilldelad till'], startDate: ['Earliest start', 'Tidigast start'], deadlineDate: ['Deadline', 'Slutdatum'],
   startTime: ['Start time (optional)', 'Starttid (valfri)'], deadlineTime: ['Deadline time (optional)', 'Sluttid (valfri)'],
   dates: ['Dates', 'Datum'], dateZone: ['Dates use {{zone}}. A date-only deadline includes the whole day.', 'Datum använder {{zone}}. Ett slutdatum utan tid gäller hela dagen.'],
+  planningPanel: ['Planning', 'Planering'],
   description: ['Description', 'Beskrivning'], planningDetails: ['Planning details', 'Planeringsdetaljer'], noTasks: ['A little room to breathe', 'Lite utrymme att andas'],
   noNowTasks: ['Nothing is ready here yet. Plan tasks on the Board, or capture a new thought.', 'Inget är redo här ännu. Planera på Board eller fånga en ny tanke.'],
   emptyColumn: ['Nothing here yet', 'Inget här ännu'], created: ['Task created', 'Uppgiften skapades'], viewTask: ['Open task', 'Öppna uppgiften'],

@@ -58,6 +58,8 @@ export async function taskJourney(page: Page) {
   await page.getByRole('navigation').getByRole('button', { name: 'Board', exact: true }).filter({ visible: true }).click();
   await expect(page.getByRole('button', { name: 'Mow the lawn', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 1920, height: 1080 });
+  expect((await page.locator('.board-toolbar').boundingBox())!.height).toBeLessThanOrEqual(64);
+  await expect(page.locator('.board-column')).toHaveCount(6);
   await page.screenshot({ path: 'test-results/board-desktop.png' , fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('combobox', { name: 'Column', exact: true }).selectOption('in_progress');

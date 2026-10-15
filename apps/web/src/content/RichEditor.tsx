@@ -1,3 +1,4 @@
+import { Bold, Italic, Heading2, List, ListOrdered, ListChecks, Quote, Code, Link, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -52,7 +53,8 @@ export default function RichEditor({ value, onChange, members = [], label, uploa
   useEffect(() => { // Changing editability is UI state, not a document edit; do not restart autosave.
     if (editor && !editor.isDestroyed) editor.setEditable(!!onChange && !disabled, false); }, [editor, onChange, disabled]);
   if (!editor || editor.isDestroyed) return null;
-  const action = (name: string, run: () => void, active = false) => <button type="button" key={name} aria-label={t(name)} aria-pressed={active} onMouseDown={e => e.preventDefault()} onClick={run}>{t(name)}</button>;
+  const formatIcons: Record<string, LucideIcon> = { bold: Bold, italic: Italic, heading: Heading2, bulletList: List, numberedList: ListOrdered, checklist: ListChecks, quote: Quote, codeBlock: Code, link: Link };
+  const action = (name: string, run: () => void, active = false) => { const Icon = formatIcons[name]!; return <button type="button" title={t(name)} key={name} aria-label={t(name)} aria-pressed={active} onMouseDown={e => e.preventDefault()} onClick={run}><Icon size={17} /></button>; };
   return <div className={'rich-editor ' + (!onChange ? 'rich-readonly' : '')}>
     {onChange && <div className="rich-toolbar" role="toolbar" aria-label={t('formatText')}>
       {action('bold', () => editor.chain().focus().toggleBold().run(), editor.isActive('bold'))}

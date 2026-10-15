@@ -4,8 +4,8 @@ import { columns, sizes, type TaskFields as Fields, type Entity, type Task } fro
 import { useTranslation } from 'react-i18next';
 export type Member = { id: string; name: string; email: string; role: 'admin' | 'member' };
 export const emptyTask: Fields = { parentId: null, inherit: [], placeExclusions: [], resourceExclusions: [], tagExclusions: [], blockers: [], related: [], title: '', description: '', column: 'someday', epicId: null, high: false, size: null, estimateMinutes: null, startDate: null, startTime: null, deadlineDate: null, deadlineTime: null, assignees: [], places: [], resources: [], tags: [] };
-export function TaskFields({ value: local, onChange: update, entities, members, timezone, inheritance, showDates = true, upload, disabled = false }: {
-  value: Fields; onChange: (changes: Partial<Fields>) => void; entities: Entity[]; members: Member[]; timezone: string; inheritance?: Task; showDates?: boolean; disabled?: boolean; upload?: (files: File[]) => Promise<string[]>;
+export function TaskFields({ value: local, onChange: update, entities, members, timezone, inheritance, showDates = true, upload, disabled = false, section = 'all' }: {
+  section?: 'all' | 'description' | 'properties'; value: Fields; onChange: (changes: Partial<Fields>) => void; entities: Entity[]; members: Member[]; timezone: string; inheritance?: Task; showDates?: boolean; disabled?: boolean; upload?: (files: File[]) => Promise<string[]>;
 }) {
   const { t } = useTranslation();
   const value = { ...local };
@@ -30,6 +30,8 @@ export function TaskFields({ value: local, onChange: update, entities, members, 
       ? { [key]: value[key], ...(key === 'startDate' ? { startTime: value.startTime } : key === 'deadlineDate' ? { deadlineTime: value.deadlineTime } : {}), inherit: local.inherit.filter(k => k !== key) }
       : { inherit: [...local.inherit, key] })}>{t(inherited ? 'inheritedUseOwn' : 'overrideUseInherited')}</button>;
   }
+  const description = <div className="task-description"><span className="field-label">{t('description')}</span><Suspense fallback={<p>{t('loading')}</p>}><RichEditor disabled={disabled} value={value.description} onChange={description => onChange({ description })} members={members} label={t('description')} upload={upload} /></Suspense></div>;
+  if (section === 'description') return description;
   return <>
     <div className="form-grid">
       <label>{t('column')}<select value={value.column} onChange={e => onChange({ column: e.target.value as Fields['column'] })}>{columns.map(c => <option key={c} value={c}>{t('column_' + c)}</option>)}</select></label>
@@ -41,7 +43,7 @@ export function TaskFields({ value: local, onChange: update, entities, members, 
       <label className="check-label"><input type="checkbox" checked={value.high} onChange={e => onChange({ high: e.target.checked })} />{t('high')}</label>
     </div>
     {mode('high')}
-    <div><span className="field-label">{t('description')}</span><Suspense fallback={<p>{t('loading')}</p>}><RichEditor disabled={disabled} value={value.description} onChange={description => onChange({ description })} members={members} label={t('description')} upload={upload} /></Suspense></div>
+    {section === 'all' && description}
     <details className="properties" open={value.assignees.length > 0 || undefined}><summary>{t('assignees')}{value.assignees.length ? ' · ' + value.assignees.length : ''}</summary>{mode('assignees')}<div className="choice-list">{members.map(member => <label className="check-label" key={member.id}><input type="checkbox" checked={value.assignees.includes(member.id)} onChange={e => onChange({ assignees: e.target.checked ? [...value.assignees, member.id].sort() : value.assignees.filter(id => id !== member.id) })} />{member.name}</label>)}</div></details>
     {showDates && <details className="properties" open={!!value.startDate || !!value.deadlineDate || undefined}><summary>{t('dates')}</summary><p className="small muted">{t('dateZone', { zone: timezone })}</p>
       {mode('startDate')}<div className="form-grid"><label>{t('startDate')}<input type="date" value={value.startDate ?? ''} onChange={e => onChange({ startDate: e.target.value || null, ...(e.target.value ? {} : { startTime: null }) })} /></label><label>{t('startTime')}<input type="time" disabled={!value.startDate} value={value.startTime ?? ''} onChange={e => onChange({ startTime: e.target.value || null })} /></label></div>
