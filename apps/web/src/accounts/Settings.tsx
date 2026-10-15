@@ -25,9 +25,9 @@ export function Settings({ account, refresh, link, clearLink, useInvitation, emb
     finally { setBusy(false); }
   };
   return <div className="app-shell">
-    <header className="topbar">{!embedded && <div className="brand"><House size={22} /> Tendly</div>}<button className="quiet" onClick={() => void run(async () => { await result(api.POST('/api/v1/auth/logout', { body: {} })); }, '')}><LogOut size={16} />{t('signOut')}</button></header>
+    <header className="settings-heading">{embedded && <h1>{t('settings')}</h1>}{!embedded && <div className="brand"><House size={22} /> Tendly</div>}<button className="quiet" onClick={() => void run(async () => { await result(api.POST('/api/v1/auth/logout', { body: {} })); }, '')}><LogOut size={16} />{t('signOut')}</button></header>
     <div className="settings-layout"><aside>
-      <h1>{t('settings')}</h1>
+      {!embedded && <h1>{t('settings')}</h1>}
       {!embedded && account.households.length > 1 && <label>{t('household')}<select value={household?.id ?? ''} onChange={(event) => setHouseholdId(event.target.value)}>{account.households.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
       {account.households.length === 1 && <p className="muted small">{household?.name}</p>}
       <nav aria-label={t('settings')}>
@@ -47,7 +47,7 @@ export function Settings({ account, refresh, link, clearLink, useInvitation, emb
       {page === 'account' && <><AccountPanel account={account} run={run} busy={busy} /><section className="panel"><InvitationCodeEntry onUse={useInvitation} /></section></>}
       {page === 'members' && household && <MembersPanel key={household.id} household={household} run={run} busy={busy} />}
       {page === 'smtp' && account.deploymentAdmin && <SmtpPanel run={run} busy={busy} />}
-    </section></div><p className="muted small">Tendly {version.data?.version}</p>
+    </section></div><footer className="settings-footer muted small">Tendly {version.data?.version}</footer>
   </div>;
 }
 function AccountPanel({ account, run, busy }: { account: Account; run: Run; busy: boolean }) {
@@ -103,7 +103,7 @@ function SmtpPanel({ run, busy }: { run: Run; busy: boolean }) {
   const { t } = useTranslation();
   const smtp = useQuery({ queryKey: ['smtp'], queryFn: () => result(api.GET('/api/v1/settings/smtp')) });
   if (smtp.isPending) return <p role="status">{t('loading')}</p>;
-  if (smtp.isError) return <p role="alert">{t(errorKey(smtp.error))}<button onClick={() => { if (errorKey(smtp.error) === 'reauthentication_required') void run(signIn); else void smtp.refetch(); }}>{t(errorKey(smtp.error) === 'reauthentication_required' ? 'reauth' : 'retry')}</button></p>;
+  if (smtp.isError) return <section className="panel settings-message" role="alert"><h2>{t('smtp')}</h2><p>{t(errorKey(smtp.error))}</p><button onClick={() => { if (errorKey(smtp.error) === 'reauthentication_required') void run(signIn); else void smtp.refetch(); }}>{t(errorKey(smtp.error) === 'reauthentication_required' ? 'reauth' : 'retry')}</button></section>;
   const config = smtp.data;
   return <section className="panel"><h2>{t('smtp')}</h2><p className="muted">{t('smtpText')}</p><form key={JSON.stringify(config)} onSubmit={(event) => {
     event.preventDefault(); const data = new FormData(event.currentTarget); const password = String(data.get('password'));
