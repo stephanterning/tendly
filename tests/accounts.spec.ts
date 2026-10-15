@@ -1,3 +1,4 @@
+import { webkitEditorJourney } from './webkit-journey.js';
 import { vpJourney } from './vp-journey.js';
 import { test, expect, type BrowserContext, type Page, type WebSocket } from '@playwright/test';
 import { hierarchyJourney } from './hierarchy-journey.js';
@@ -60,6 +61,7 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await new Promise(resolve => setTimeout(resolve, 61_000));
   // Heartbeats must keep the same idle socket alive beyond the proxy's 60-second timeout.
   expect(idleSocket?.isClosed()).toBe(false);
+  await webkitEditorJourney(context, origin);
   await settings(page);
   await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   const offlineContext = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US', permissions: ['clipboard-read', 'clipboard-write'] });

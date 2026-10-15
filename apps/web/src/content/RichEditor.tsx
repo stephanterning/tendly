@@ -12,6 +12,9 @@ export default function RichEditor({ value, onChange, members = [], label, uploa
   const { t } = useTranslation(), callback = useRef(onChange), uploadRef = useRef(upload), membersRef = useRef(members);
   callback.current = onChange; uploadRef.current = upload; membersRef.current = members;
   const editor = useEditor({
+    // Create after React commits: a lazy sheet can delay effects long enough for
+    // Tiptap to dispose an instance created during render (notably in WebKit).
+    immediatelyRender: false,
     extensions: [StarterKit.configure({ link: { openOnClick: !onChange, protocols: ['https', 'http', 'mailto'], HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: '_blank' } } }), Image, TaskList, TaskItem.configure({ nested: true }), Mention.configure({
       suggestion: {
         items: ({ query }) => membersRef.current.filter(m => m.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())).slice(0, 8),
@@ -38,17 +41,17 @@ export default function RichEditor({ value, onChange, members = [], label, uploa
     editorProps: { attributes: { role: 'textbox', 'aria-label': label, 'aria-multiline': 'true' }, handlePaste: (_view, event) => {
       const files = Array.from(event.clipboardData?.files ?? []);
       if (!files.length || !uploadRef.current) return false;
-      void uploadRef.current(files).then(urls => { for (const src of urls) editor?.chain().focus().setImage({ src }).run(); }); return true;
+      void uploadRef.current(files).then(urls => { if (!editor || editor.isDestroyed) return; for (const src of urls) editor.chain().focus().setImage({ src }).run(); }); return true;
     }, handleDrop: (_view, event) => {
       const files = Array.from(event.dataTransfer?.files ?? []);
       if (!files.length || !uploadRef.current) return false;
-      void uploadRef.current(files).then(urls => { for (const src of urls) editor?.chain().focus().setImage({ src }).run(); }); return true;
+      void uploadRef.current(files).then(urls => { if (!editor || editor.isDestroyed) return; for (const src of urls) editor.chain().focus().setImage({ src }).run(); }); return true;
     } },
   });
-  useEffect(() => { if (editor && JSON.stringify(editor.getJSON()) !== value) editor.commands.setContent(readRichText(value), { emitUpdate: false }); }, [value, editor]);
+  useEffect(() => { if (editor && !editor.isDestroyed && JSON.stringify(editor.getJSON()) !== value) editor.commands.setContent(readRichText(value), { emitUpdate: false }); }, [value, editor]);
   useEffect(() => { // Changing editability is UI state, not a document edit; do not restart autosave.
-    editor?.setEditable(!!onChange && !disabled, false); }, [editor, onChange, disabled]);
-  if (!editor) return null;
+    if (editor && !editor.isDestroyed) editor.setEditable(!!onChange && !disabled, false); }, [editor, onChange, disabled]);
+  if (!editor || editor.isDestroyed) return null;
   const action = (name: string, run: () => void, active = false) => <button type="button" key={name} aria-label={t(name)} aria-pressed={active} onMouseDown={e => e.preventDefault()} onClick={run}>{t(name)}</button>;
   return <div className={'rich-editor ' + (!onChange ? 'rich-readonly' : '')}>
     {onChange && <div className="rich-toolbar" role="toolbar" aria-label={t('formatText')}>
