@@ -26,6 +26,9 @@ checked in CI. Authenticated attachment routes support files, images and profile
 
 Check `docker compose ps` and `docker compose logs`. Health endpoints separate process
 liveness from database readiness. Worker health requires a recent successful DB check.
+The web health check reaches API readiness through nginx, rather than checking only the
+static page. Nginx follows Docker DNS address changes when the API container is replaced;
+API-only upgrades do not require manually restarting the web proxy.
 API/worker handle termination signals. `docker compose down` preserves volumes;
 **`docker compose down --volumes` destroys them** and is only appropriate for disposable
 CI/development installations.
