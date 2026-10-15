@@ -192,3 +192,26 @@ that intent; dropping applies the previewed action. Use visual feedback rather
 than explanatory drop-zone text. Existing consequential-action confirmation and
 menu alternatives remain available. Automatically sorted views retain their sort
 order and do not offer a misleading manual insertion slot.
+
+### Owner-approved workspace redesign — 2026-10-15
+
+Use the approved compact preview's warm neutral light/dark surfaces, muted green
+chrome and subtle dotted workspace background. Epic colors remain the authoritative
+card identity. Keep a thin desktop toolbar for view/household context, saved quick
+filters, current place, favorite, search and creation; no slogan or large headline
+region. Overflowing chips scroll, and narrow screens may wrap controls without
+removing any capability. The collapsible sidebar starts in its compact state.
+
+Board column surfaces follow their contents instead of stretching to equal heights.
+Cards have consistent padding, content-dependent height, compact epic identity and
+XS–XL before secondary metadata. Completion and the accessible move menu stay inside
+the card footprint. Preserve insertion previews, dwell-to-reparent and mobile
+single-column navigation.
+
+Desktop task details use a wide right-side sheet with rich description, subtasks,
+attachments, comments and activity in the main area and the existing planning fields
+and lifecycle actions in a slim right column. Mobile stacks those areas and provides
+a direct jump to planning. Keep all inheritance, dependency, recurrence, conflict,
+confirmation and autosave behavior. The title grows with its text; formatting uses
+compact labeled icon buttons. Preview-only illustration and sample tasks are not
+production data.

@@ -25,6 +25,10 @@ export async function vpJourney(page: Page) {
   await source.dragTo(page.locator('.board-column').filter({ has: page.getByRole('heading', { name: 'To Do', exact: true }) }));
   await expect(page.locator('.board-column').filter({ has: page.getByRole('heading', { name: 'To Do', exact: true }) }).getByRole('button', { name: 'VP household inspection', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'VP household inspection', exact: true }).click();
+  const contentBounds = (await page.locator('.task-detail-content').boundingBox())!;
+  const planningBounds = (await page.locator('.task-detail-properties').boundingBox())!;
+  expect(planningBounds.x).toBeGreaterThanOrEqual(contentBounds.x + contentBounds.width - 1);
+  await page.screenshot({ path: 'test-results/task-desktop-redesign.png' });
   await page.getByRole('textbox', { name: 'Description', exact: true }).fill('Inspection notes');
   await expect(page.locator('.save-status')).toContainText('Saved');
   await page.getByRole('textbox', { name: 'Comment', exact: true }).fill('Remember the brass fitting');

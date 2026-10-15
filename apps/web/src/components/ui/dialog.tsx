@@ -4,15 +4,15 @@ import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 // shadcn/ui's Radix composition: focus trapping, Escape and focus restoration live
 // in the primitive; Tendly supplies its responsive sheet treatment.
-export function Dialog({ open, onOpenChange, title, children, sheet = false }: {
-  open: boolean; onOpenChange: (open: boolean) => void; title: string; children: ReactNode; sheet?: boolean;
+export function Dialog({ open, onOpenChange, title, children, sheet = false, className = '' }: {
+  open: boolean; onOpenChange: (open: boolean) => void; title: string; children: ReactNode; sheet?: boolean; className?: string;
 }) {
   const { t } = useTranslation();
   const returnFocus = useRef(document.activeElement);
   return <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="dialog-overlay" />
-      <DialogPrimitive.Content className={sheet ? 'dialog-content task-sheet' : 'dialog-content'} aria-describedby={undefined} onCloseAutoFocus={event => {
+      <DialogPrimitive.Content className={(sheet ? 'dialog-content task-sheet' : 'dialog-content') + ' ' + className} aria-describedby={undefined} onCloseAutoFocus={event => {
         event.preventDefault();
         const target = returnFocus.current;
         if (target instanceof HTMLElement && target.isConnected) target.focus();

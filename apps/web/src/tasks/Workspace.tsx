@@ -9,7 +9,7 @@ import { PlanningLibrary, usePlanning } from '../planning/PlanningLibrary.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { House, LayoutGrid, MoreHorizontal, Plus, PanelLeftClose, PanelLeftOpen, Check, Flag, Clock3, Settings2, Shapes, ArrowLeft } from 'lucide-react';
+import { House, LayoutGrid, MoreHorizontal, Plus, PanelLeftClose, PanelLeftOpen, Check, Flag, Clock3, Settings2, Shapes, ArrowLeft, Search as SearchIcon, Star, MapPin, ListChecks } from 'lucide-react';
 import { columns, type Account, type Task, type TaskChanges, type TaskColumn, type Entity, type ViewDefinition } from '@tendly/shared';
 import { api, result } from '../accounts/api.js';
 import { Settings } from '../accounts/Settings.js';
@@ -35,7 +35,7 @@ export function Workspace({ account, refresh, link, clearLink, useInvitation }: 
   const [seriesId, setSeriesId] = useState<string | null>(null);
   const [lifecycleUndo, setLifecycleUndo] = useState<{ id: string; version: number; action: 'restore' | 'unarchive' } | null>(null);
   const [view, setView] = useState<'now' | 'board' | 'more' | 'library' | 'settings' | 'planning' | 'custom' | 'templates' | 'lifecycle'>(link ? 'settings' : 'now');
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [column, setColumn] = useState<TaskColumn>('todo');
   const [captureEpic, setCaptureEpic] = useState<string | null>(null);
   const [capture, setCapture] = useState<TaskColumn | null>(null);
@@ -146,21 +146,26 @@ export function Workspace({ account, refresh, link, clearLink, useInvitation }: 
     <aside className="workspace-nav">
       <div className="brand"><House size={23} /><span>Tendly</span></div>
       {account.households.length > 1 ? <label className="household-switch"><span className="sr-only">{t('household')}</span><select value={id} onChange={e => switchHousehold(e.target.value)}>{account.households.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label> : <p className="nav-household muted">{household?.name}</p>}
-      <nav aria-label="Tendly">{navigation.map(({ key, icon: Icon }) => <button key={key} aria-label={t(key)} aria-current={view === key || key === 'more' && ['library', 'settings'].includes(view) ? 'page' : undefined} onClick={() => setView(key)}><Icon size={21} /><span>{t(key)}</span></button>)}</nav>
-      <nav aria-label={t('favoriteViews')}>{planning.data?.views.filter(v => !v.builtin && planning.data.personal[v.id]?.favorite).map(v => <button key={v.id} aria-current={customId === v.id && view === 'custom' ? 'page' : undefined} onClick={() => { setCustomId(v.id); setView('custom'); }}><EntityIcon name={v.icon} size={21} /><span>{v.name}</span></button>)}</nav>
+      <nav aria-label="Tendly">{navigation.map(({ key, icon: Icon }) => <button key={key} aria-label={t(key)} title={t(key)} aria-current={view === key || key === 'more' && ['library', 'settings'].includes(view) ? 'page' : undefined} onClick={() => setView(key)}><Icon size={21} /><span>{t(key)}</span></button>)}</nav>
+      <nav aria-label={t('favoriteViews')}>{planning.data?.views.filter(v => !v.builtin && planning.data.personal[v.id]?.favorite).map(v => <button key={v.id} aria-label={v.name} title={v.name} aria-current={customId === v.id && view === 'custom' ? 'page' : undefined} onClick={() => { setCustomId(v.id); setView('custom'); }}><EntityIcon name={v.icon} size={21} /><span>{v.name}</span></button>)}</nav>
       <button className="nav-collapse quiet" aria-label={t(collapsed ? 'expandNav' : 'collapseNav')} onClick={() => setCollapsed(!collapsed)}>{collapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}</button>
       <div className="nav-person"><span className="avatar">{account.avatar ? <img src={account.avatar} alt="" /> : account.name.slice(0, 1).toUpperCase()}</span><span>{account.name}</span></div>
     </aside>
-    <main className="workspace-main" tabIndex={-1}>
-      {id && <div className="workspace-utilities"><button onClick={() => setSearching(true)}>{t('search')}</button>{!connected && <small role="status">{t('reconnecting')}</small>}</div>}
+    <main className={"workspace-main " + (['now', 'board', 'custom'].includes(view) ? 'task-workspace' : '')} tabIndex={-1}>
+      {id && !['now', 'board', 'custom'].includes(view) && <div className="workspace-utilities"><button onClick={() => setSearching(true)}>{t('search')}</button>{!connected && <small role="status">{t('reconnecting')}</small>}</div>}
       {account.households.length > 1 && <label className="mobile-household-switch">{t('household')}<select value={id} onChange={e => switchHousehold(e.target.value)}>{account.households.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></label>}
       {['now', 'board', 'custom'].includes(view) && <>
-        <header className="page-heading"><div><p className="eyebrow">{household?.name ?? 'Tendly'}</p><h1>{activeView?.builtin ? t(activeView.builtin) : activeView?.name ?? t(view)}</h1>{view === 'now' && <p className="muted">{t('todayFocus')}</p>}</div><button className="desktop-capture primary" onClick={() => setCapture('someday')} disabled={!id}><Plus size={19} />{t('newTask')}</button></header>
+        <header className="board-toolbar">
+          <div className="board-context"><h1>{activeView?.builtin ? t(activeView.builtin) : activeView?.name ?? t(view)}</h1><span>{household?.name}</span></div>
+          {activeView && <div className="view-toolbar"><QuickFilterBar onManage={() => setView('planning')} householdId={id} filters={activeView.definition.quickFilters.flatMap(filterId => planning.data?.filters.filter(f => f.id === filterId) ?? [])} active={personal?.activeFilters ?? []} onChange={activeFilters => void updatePersonal({ activeFilters })} entities={entities.data ?? []} members={members.data ?? []} /><label className="current-place"><MapPin size={16} aria-hidden="true" /><span className="sr-only">{t('currentPlace')}</span><select value={personal?.currentPlace ?? ''} onChange={e => void updatePersonal({ currentPlace: e.target.value || null })}><option value="">{t('none')}</option>{entities.data?.filter(e => e.kind === 'place').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label><button className="quiet icon-button" aria-label={t('favorite')} aria-pressed={personal?.favorite ?? false} onClick={() => void updatePersonal({ favorite: !personal?.favorite })}><Star size={17} fill={personal?.favorite ? 'currentColor' : 'none'} /></button></div>}
+          <div className="board-actions"><button className="quiet icon-button" aria-label={t('search')} onClick={() => setSearching(true)}><SearchIcon size={19} /></button><button className="desktop-capture primary" onClick={() => setCapture('someday')} disabled={!id}><Plus size={18} />{t('newTask')}</button></div>
+        </header>
+        {!connected && <small role="status">{t('reconnecting')}</small>}
         {!household && <div className="empty-state"><p>{t('noMembership')}</p><button onClick={() => setView('settings')}>{t('accountSettings')}</button></div>}
         {error && <p role="alert" className="alert error">{t(error)}</p>}
         {list.data?.pages[0]?.missingCurrentPlace && <p className="alert">{t('chooseCurrentPlace')}</p>}
         {list.isError && <div role="alert" className="alert error">{t('network_error')} <button onClick={() => void list.refetch()}>{t('retry')}</button></div>}
-        {activeView && <div className="view-toolbar"><QuickFilterBar onManage={() => setView('planning')} householdId={id} filters={activeView.definition.quickFilters.flatMap(filterId => planning.data?.filters.filter(f => f.id === filterId) ?? [])} active={personal?.activeFilters ?? []} onChange={activeFilters => void updatePersonal({ activeFilters })} entities={entities.data ?? []} members={members.data ?? []} /><label>{t('currentPlace')}<select value={personal?.currentPlace ?? ''} onChange={e => void updatePersonal({ currentPlace: e.target.value || null })}><option value="">{t('none')}</option>{entities.data?.filter(e => e.kind === 'place').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label><button aria-pressed={personal?.favorite ?? false} onClick={() => void updatePersonal({ favorite: !personal?.favorite })}>{t('favorite')}</button></div>}
+
         {(list.isPending && id) ? <p role="status">{t('loading')}</p> : presentation === 'list' ? <TaskDragSurface className="now-list" manual={activeView?.definition.sort === 'manual'}>
           {!items.length && id && <div className="empty-state"><div className="empty-symbol"><House size={30} /></div><h2>{t('noTasks')}</h2><p>{t(personal?.activeFilters.length ? 'noFilterMatches' : 'noNowTasks')}</p><button onClick={() => setView('board')}>{t('board')}</button></div>}
           {items.map(card)}
@@ -206,15 +211,16 @@ function TaskCard({ task, entities, members, open, complete, properties }: { tas
   return <article className={'task-card ' + (epic ? 'has-epic ' : '') + (task.column === 'done' ? 'completed' : '')} style={epicStyle(epic)}>
     <button className="card-open" draggable onClick={open} aria-label={task.title}>
       {epic && <span className="card-icon"><EntityIcon name={epic.icon} size={26} /></span>}
-      <span className="card-content"><strong>{task.title}</strong><span className="card-metadata">
-        {properties?.includes('progress') && task.progress.total > 0 && <span aria-label={t('subtaskProgress', task.progress)}>{task.progress.done}/{task.progress.total}</span>}
+      <span className="card-content">{epic && <span className="card-epic">{epic.name}</span>}<strong>{task.title}</strong><span className="card-metadata">
+        {properties?.includes('size') && task.size && <span className="size-chip">{task.size}</span>}
+        {properties?.includes('estimate') && task.estimateMinutes !== null && <small>{task.estimateMinutes} min</small>}
+        {properties?.includes('progress') && task.progress.total > 0 && <span aria-label={t('subtaskProgress', task.progress)}><ListChecks size={13} />{task.progress.done}/{task.progress.total}</span>}
         {task.parentId && <span title={task.ancestors.map(a => a.title).join(' › ')}>↳ {task.ancestors.at(-1)?.title}</span>}
         {properties?.includes('priority') && task.high && <span title={t('high')}><Flag size={13} aria-label={t('high')} /></span>}
         {properties?.includes('deadline') && task.deadlineDate && <span className={task.overdue ? 'deadline overdue' : 'deadline'}>{task.overdue && <span>{t('overdue')} · </span>}{new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(task.deadlineDate + 'T12:00:00Z'))}</span>}
         {!task.available && <span title={t('unavailable')}><Clock3 size={13} />{t('unavailable')}</span>}
         {properties?.includes('assignees') && task.assignees.map(id => <span className="card-avatar" key={id} title={members.find(m => m.id === id)?.name}>{members.find(m => m.id === id)?.name.slice(0, 1).toUpperCase()}</span>)}
       {(['places', 'resources', 'tags'] as const).filter(p => properties?.includes(p)).flatMap(p => task[p].map(id => <span key={id}>{entities.find(e => e.id === id)?.name}</span>))}</span></span>
-      {properties?.includes('size') && task.size && <span className="size-chip">{task.size}</span>}{properties?.includes('estimate') && task.estimateMinutes !== null && <small>{task.estimateMinutes} min</small>}
     </button>
     <button className="card-complete" aria-label={t(task.column === 'done' ? 'reopen' : 'complete') + ' · ' + task.title} aria-pressed={task.column === 'done'} onClick={complete}><span>{task.column === 'done' && <Check size={15} />}</span></button>
   </article>;
