@@ -21,6 +21,36 @@ export async function webkitEditorJourney(source: BrowserContext, origin: string
       await page.getByRole('button', { name: 'Close', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
     }
+    const card = page.getByRole('button', { name: 'VP household inspection', exact: true });
+    const target = page.locator('.board-column').filter({ has: page.getByRole('heading', { name: 'Within a Month', exact: true }) });
+    await card.dragTo(target);
+    await expect(target.getByRole('button', { name: 'VP household inspection', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Move task · VP household inspection', exact: true }).click();
+    const menu = page.locator('.card-action-menu');
+    await expect(menu).toBeVisible();
+    // The menu must remain hit-testable even beyond the board's scroll boundary.
+    const hint = menu.locator('small');
+    await expect(hint).toBeVisible();
+    expect(await hint.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+    })).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('.mobile-column-select select').selectOption('within_month');
+    const moveButton = page.getByRole('button', { name: 'Move task · VP household inspection', exact: true });
+    await moveButton.click();
+    await expect(menu).toBeVisible();
+    const bounds = await menu.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(390);
+    expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(844);
+    await page.screenshot({ path: 'test-results/board-menu-mobile-webkit.png' });
+    await menu.getByRole('combobox').selectOption('todo');
+    await expect(card).toBeHidden();
+    await page.locator('.mobile-column-select select').selectOption('todo');
+    await expect(card).toBeVisible();
     expect(errors).toEqual([]);
   } finally { await browser.close(); }
 }

@@ -21,7 +21,7 @@ export async function vpJourney(page: Page) {
   await page.getByLabel('What needs doing?', { exact: true }).fill('VP household inspection');
   await page.getByRole('button', { name: 'Add task', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  const source = page.locator('.movable-card').filter({ has: page.getByRole('button', { name: 'VP household inspection', exact: true }) });
+  const source = page.getByRole('button', { name: 'VP household inspection', exact: true });
   await source.dragTo(page.locator('.board-column').filter({ has: page.getByRole('heading', { name: 'To Do', exact: true }) }));
   await expect(page.locator('.board-column').filter({ has: page.getByRole('heading', { name: 'To Do', exact: true }) }).getByRole('button', { name: 'VP household inspection', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'VP household inspection', exact: true }).click();

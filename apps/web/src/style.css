@@ -111,7 +111,7 @@ p { margin: .65rem 0; }
 .card-complete { width: 44px; flex-shrink: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .card-complete>span { width: 19px; height: 19px; display: grid; place-items: center; border: 1.5px solid currentColor; border-radius: 4px; }
 .completed .card-content strong { text-decoration: line-through; }
-.board { display: grid; grid-template-columns: repeat(6,minmax(300px,1fr)); gap: 1rem; overflow-x: auto; padding: .25rem .25rem 1.5rem; align-items: start; }
+.board { display: grid; grid-template-columns: repeat(6,minmax(300px,1fr)); gap: 1rem; overflow-x: auto; padding: .25rem .25rem 1.5rem; align-items: stretch; }
 .board-column { min-width: 0; border-radius: 14px; background: var(--surface); padding: .5rem; border: 1px solid var(--line); }
 .board-column>header { display: flex; align-items: center; justify-content: space-between; padding: 0 .25rem .45rem .5rem; }
 .board-column h2 { font-size: .85rem; margin: 0; }
@@ -245,13 +245,18 @@ p { margin: .65rem 0; }
 .epic-lane { margin-bottom: 1rem; }
 .epic-lane > summary { cursor: pointer; display: flex; gap: .5rem; align-items: center; min-height: 44px; padding: .5rem; font-weight: 650; }
 .movable-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: stretch; }
-.card-actions { position: relative; }
-.card-actions > summary { min-height: 44px; height: 100%; display: grid; place-items: center; cursor: pointer; list-style: none; }
-.card-action-menu { position: absolute; right: 0; top: 100%; background: var(--surface); box-shadow: 0 4px 20px #0003; border: 1px solid var(--line); padding: 1rem; min-width: 230px; z-index: 10; display: grid; gap: .5rem; border-radius: .75rem; }
-.drop-before, .drop-child { display: none; }
-.dragging-task .drop-before, .dragging-task .drop-child { display: block; border: 1px dashed var(--accent); border-radius: .4rem; padding: .5rem; font-size: .75rem; margin: .2rem 0; }
-.dragging-task .drop-before:hover, .dragging-task .drop-child:hover { background: var(--surface); outline: 2px solid var(--accent); }
-.drop-before, .drop-child { grid-column: 1 / -1; }
+/* Keep drag targets out of layout: moving the source during dragstart cancels WebKit drags. */
+.movable-card > .task-card { grid-column: 1; grid-row: 1; }
+.card-actions { grid-column: 2; grid-row: 1; min-height: 44px; padding: 0; align-self: stretch; }
+.card-action-menu { background: var(--surface); box-shadow: 0 4px 20px #0003; border: 1px solid var(--line); padding: 1rem; width: min(280px, calc(100vw - 24px)); max-height: var(--radix-popover-content-available-height); overflow-y: auto; z-index: 40; display: grid; gap: .5rem; border-radius: .75rem; }
+.drop-before, .drop-child { display: none; position: absolute; left: .5rem; right: 3rem; z-index: 2; }
+.drop-before { top: -.6rem; }
+.drop-child { bottom: -.6rem; }
+.dragging-task .drop-before, .dragging-task .drop-child { display: block; border: 1px dashed var(--accent); background: var(--surface); border-radius: .4rem; padding: .3rem .5rem; font-size: .75rem; }
+.dragging-task .drop-before:hover, .dragging-task .drop-child:hover { outline: 2px solid var(--accent); }
+.dragging-task .board-column { outline: 1px dashed var(--accent); }
+.card-open[draggable=true] { -webkit-user-drag: element; user-select: none; cursor: grab; }
+.card-open[draggable=true]:active { cursor: grabbing; }
 .rich-editor { border: 1px solid var(--line); border-radius: .7rem; margin: .5rem 0 1rem; overflow: hidden; }
 .rich-toolbar { display: flex; flex-wrap: wrap; gap: .25rem; padding: .4rem; border-bottom: 1px solid var(--line); }
 .rich-toolbar button { font-size: .75rem; min-height: 36px; padding: .3rem .5rem; }
