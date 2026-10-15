@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import * as Popover from '@radix-ui/react-popover';
 import { useTranslation } from 'react-i18next';
 import { columns, type Entity, type Task, type TaskColumn } from '@tendly/shared';
 import { EntityIcon, epicStyle } from '../tasks/identity.js';
@@ -13,10 +14,10 @@ export function TaskBoard({ items, entities, column, lanes, empty, renderCard, c
 }
 export function MovableCard({ task, manual, children, reorder, reparent, change, moveUp, moveDown }: { task: Task; manual: boolean; children: ReactNode; reorder: (beforeId: string | null, movingId?: string) => void; reparent: (movingId: string, parentId: string) => void; change: (column: TaskColumn) => void; moveUp: () => void; moveDown: () => void }) {
   const { t } = useTranslation();
-  return <div className="movable-card" draggable onDragStart={e => { e.dataTransfer.setData('application/x-tendly-task', task.id); e.dataTransfer.effectAllowed = 'move'; document.body.classList.add('dragging-task'); }} onDragEnd={() => document.body.classList.remove('dragging-task')}>
+  return <div className="movable-card" draggable onDragStart={e => { e.dataTransfer.setData('application/x-tendly-task', task.id); e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move'; document.body.classList.add('dragging-task'); }} onDragEnd={() => document.body.classList.remove('dragging-task')}>
     {manual && <div className="drop-before" onDragOver={e => { e.preventDefault(); e.stopPropagation(); }} onDrop={e => { e.preventDefault(); e.stopPropagation(); reorder(task.id, e.dataTransfer.getData('application/x-tendly-task')); }}>{t('dropBefore')}</div>}
     {children}
     <div className="drop-child" onDragOver={e => { e.preventDefault(); e.stopPropagation(); }} onDrop={e => { e.preventDefault(); e.stopPropagation(); reparent(e.dataTransfer.getData('application/x-tendly-task'), task.id); }}>{t('dropAsSubtask')}</div>
-    <details className="card-actions"><summary aria-label={t('moveTask') + ' · ' + task.title}>···</summary><div className="card-action-menu"><label>{t('column')}<select value={task.column} onChange={e => change(e.target.value as TaskColumn)}>{columns.map(c => <option key={c} value={c}>{t('column_' + c)}</option>)}</select></label>{manual && <><button onClick={moveUp}>{t('moveUp')}</button><button onClick={moveDown}>{t('moveDown')}</button><button onClick={() => reorder(null)}>{t('moveToEnd')}</button></>}<small>{t('moveParentInDetails')}</small></div></details>
+    <Popover.Root><Popover.Trigger className="card-actions quiet" aria-label={t('moveTask') + ' · ' + task.title}>···</Popover.Trigger><Popover.Portal><Popover.Content className="card-action-menu" side="bottom" align="end" sideOffset={6} collisionPadding={12} aria-label={t('moveTask') + ' · ' + task.title}><label>{t('column')}<select value={task.column} onChange={e => change(e.target.value as TaskColumn)}>{columns.map(c => <option key={c} value={c}>{t('column_' + c)}</option>)}</select></label>{manual && <><button onClick={moveUp}>{t('moveUp')}</button><button onClick={moveDown}>{t('moveDown')}</button><button onClick={() => reorder(null)}>{t('moveToEnd')}</button></>}<small>{t('moveParentInDetails')}</small></Popover.Content></Popover.Portal></Popover.Root>
   </div>;
 }

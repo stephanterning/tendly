@@ -200,7 +200,7 @@ function TaskCard({ task, entities, members, open, complete, properties }: { tas
   const { t, i18n } = useTranslation();
   const epic = entities.find(e => e.id === task.epicId);
   return <article className={'task-card ' + (epic ? 'has-epic ' : '') + (task.column === 'done' ? 'completed' : '')} style={epicStyle(epic)}>
-    <button className="card-open" onClick={open} aria-label={task.title}>
+    <button className="card-open" draggable onClick={open} aria-label={task.title}>
       {epic && <span className="card-icon"><EntityIcon name={epic.icon} size={26} /></span>}
       <span className="card-content"><strong>{task.title}</strong><span className="card-metadata">
         {properties?.includes('progress') && task.progress.total > 0 && <span aria-label={t('subtaskProgress', task.progress)}>{task.progress.done}/{task.progress.total}</span>}
