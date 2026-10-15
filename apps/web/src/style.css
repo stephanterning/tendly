@@ -245,16 +245,16 @@ p { margin: .65rem 0; }
 .epic-lane { margin-bottom: 1rem; }
 .epic-lane > summary { cursor: pointer; display: flex; gap: .5rem; align-items: center; min-height: 44px; padding: .5rem; font-weight: 650; }
 .movable-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: stretch; }
-/* Keep drag targets out of layout: moving the source during dragstart cancels WebKit drags. */
+/* Drag start only dims the source; insertion slots appear after reaching a destination. */
 .movable-card > .task-card { grid-column: 1; grid-row: 1; }
 .card-actions { grid-column: 2; grid-row: 1; min-height: 44px; padding: 0; align-self: stretch; }
 .card-action-menu { background: var(--surface); box-shadow: 0 4px 20px #0003; border: 1px solid var(--line); padding: 1rem; width: min(280px, calc(100vw - 24px)); max-height: var(--radix-popover-content-available-height); overflow-y: auto; z-index: 40; display: grid; gap: .5rem; border-radius: .75rem; }
-.drop-before, .drop-child { display: none; position: absolute; left: .5rem; right: 3rem; z-index: 2; }
-.drop-before { top: -.6rem; }
-.drop-child { bottom: -.6rem; }
-.dragging-task .drop-before, .dragging-task .drop-child { display: block; border: 1px dashed var(--accent); background: var(--surface); border-radius: .4rem; padding: .3rem .5rem; font-size: .75rem; }
-.dragging-task .drop-before:hover, .dragging-task .drop-child:hover { outline: 2px solid var(--accent); }
-.dragging-task .board-column { outline: 1px dashed var(--accent); }
+.drag-placeholder { border: 2px dashed var(--accent); border-radius: 14px; background: var(--tint); flex-shrink: 0; pointer-events: auto; }
+.movable-card[data-drag-source=true] { opacity: .35; }
+.movable-card[data-nest-pending=true] > .task-card { outline: 1px dashed var(--accent); outline-offset: 2px; }
+.movable-card[data-nest-target=true] > .task-card { outline: 3px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 0 7px var(--tint); transform: scale(1.025); }
+.board-column[data-drag-over=true] { border-color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .movable-card > .task-card { transition: transform 150ms, box-shadow 150ms; } }
 .card-open[draggable=true] { -webkit-user-drag: element; user-select: none; cursor: grab; }
 .card-open[draggable=true]:active { cursor: grabbing; }
 .rich-editor { border: 1px solid var(--line); border-radius: .7rem; margin: .5rem 0 1rem; overflow: hidden; }

@@ -1,3 +1,4 @@
+import { dragPreviewJourney } from './drag-preview-journey.js';
 import { expect, webkit, type BrowserContext } from '@playwright/test';
 
 export async function webkitEditorJourney(source: BrowserContext, origin: string) {
@@ -21,6 +22,7 @@ export async function webkitEditorJourney(source: BrowserContext, origin: string
       await page.getByRole('button', { name: 'Close', exact: true }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
     }
+    await dragPreviewJourney(page);
     const card = page.getByRole('button', { name: 'VP household inspection', exact: true });
     const target = page.locator('.board-column').filter({ has: page.getByRole('heading', { name: 'Within a Month', exact: true }) });
     await card.dragTo(target);

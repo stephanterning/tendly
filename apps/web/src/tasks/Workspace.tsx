@@ -1,3 +1,4 @@
+import { TaskDragSurface } from '../planning/TaskDragSurface.js';
 import { QuickFilterBar } from '../planning/QuickFilterBar.js';
 import { Search } from '../content/Search.js';
 import { useHouseholdSync } from '../content/useHouseholdSync.js';
@@ -78,8 +79,8 @@ export function Workspace({ account, refresh, link, clearLink, useInvitation }: 
       } else setError((e as Error).message);
     } finally { mutationBusy.current = false; }
   }
-  async function reorder(taskId: string, beforeId: string | null) {
-    const task = items.find(t => t.id === taskId);
+  async function reorder(taskId: string, beforeId: string | null, updated?: Task) {
+    const task = updated ?? items.find(t => t.id === taskId);
     if (!task) return;
     try { await saved(await result(api.POST('/api/v1/households/{householdId}/tasks/{id}/order', { params: { path: { householdId: id, id: taskId } }, body: { baseVersion: task.version, beforeId } }))); } catch (e) { setError((e as Error).message); }
   }
@@ -87,12 +88,15 @@ export function Workspace({ account, refresh, link, clearLink, useInvitation }: 
     const siblings = items.filter(t => t.column === task.column && (!activeView?.definition.epicLanes || t.epicId === task.epicId)), index = siblings.findIndex(t => t.id === task.id);
     async function dropBefore(beforeId: string | null, movingId?: string) {
       const moving = items.find(t => t.id === movingId);
-      if (moving && (moving.column !== task.column || activeView?.definition.epicLanes && moving.epicId !== task.epicId)) {
-        if (!await move(moving.id, { column: task.column, ...(activeView?.definition.epicLanes ? { epicId: task.epicId } : {}) })) return;
+      if (presentation !== 'list' && moving && (moving.column !== task.column || activeView?.definition.epicLanes && moving.epicId !== task.epicId)) {
+        const updated = await move(moving.id, { column: task.column, ...(activeView?.definition.epicLanes ? { epicId: task.epicId } : {}) });
+        // Moving columns increments the version; order against that returned version.
+        if (updated) await reorder(moving.id, beforeId, updated);
+        return;
       }
       await reorder(movingId ?? task.id, beforeId);
     }
-    return <MovableCard key={task.id} task={task} manual={activeView?.definition.sort === 'manual'} moveUp={() => { const before = siblings[index - 1]; if (before) void reorder(task.id, before.id); }} moveDown={() => { if (index < siblings.length - 1) void reorder(task.id, siblings[index + 2]?.id ?? null); }} reorder={(beforeId, movingId) => void dropBefore(beforeId, movingId)} reparent={(movingId, parentId) => { if (movingId && window.confirm(t('reparentHelp'))) void move(movingId, { parentId }); }} change={column => void move(task.id, { column })}><TaskCard task={task} entities={entities.data ?? []} members={members.data ?? []} properties={activeView?.definition.cardProperties} open={() => setSelected(task.id)} complete={() => void toggle(task)} /></MovableCard>;
+    return <MovableCard key={task.id} task={task} manual={activeView?.definition.sort === 'manual'} afterId={(presentation === 'list' ? items[items.findIndex(item => item.id === task.id) + 1] : siblings[index + 1])?.id ?? null} moveUp={() => { const before = siblings[index - 1]; if (before) void reorder(task.id, before.id); }} moveDown={() => { if (index < siblings.length - 1) void reorder(task.id, siblings[index + 2]?.id ?? null); }} reorder={(beforeId, movingId) => void dropBefore(beforeId, movingId)} reparent={(movingId, parentId) => { if (movingId && window.confirm(t('reparentHelp'))) void move(movingId, { parentId }); }} change={column => void move(task.id, { column })}><TaskCard task={task} entities={entities.data ?? []} members={members.data ?? []} properties={activeView?.definition.cardProperties} open={() => setSelected(task.id)} complete={() => void toggle(task)} /></MovableCard>;
   }
   async function saved(task: Task) {
     queries.setQueryData(['planning', id, 'task', task.id], task);
@@ -157,17 +161,17 @@ export function Workspace({ account, refresh, link, clearLink, useInvitation }: 
         {list.data?.pages[0]?.missingCurrentPlace && <p className="alert">{t('chooseCurrentPlace')}</p>}
         {list.isError && <div role="alert" className="alert error">{t('network_error')} <button onClick={() => void list.refetch()}>{t('retry')}</button></div>}
         {activeView && <div className="view-toolbar"><QuickFilterBar onManage={() => setView('planning')} householdId={id} filters={activeView.definition.quickFilters.flatMap(filterId => planning.data?.filters.filter(f => f.id === filterId) ?? [])} active={personal?.activeFilters ?? []} onChange={activeFilters => void updatePersonal({ activeFilters })} entities={entities.data ?? []} members={members.data ?? []} /><label>{t('currentPlace')}<select value={personal?.currentPlace ?? ''} onChange={e => void updatePersonal({ currentPlace: e.target.value || null })}><option value="">{t('none')}</option>{entities.data?.filter(e => e.kind === 'place').map(e => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label><button aria-pressed={personal?.favorite ?? false} onClick={() => void updatePersonal({ favorite: !personal?.favorite })}>{t('favorite')}</button></div>}
-        {(list.isPending && id) ? <p role="status">{t('loading')}</p> : presentation === 'list' ? <div className="now-list">
+        {(list.isPending && id) ? <p role="status">{t('loading')}</p> : presentation === 'list' ? <TaskDragSurface className="now-list" manual={activeView?.definition.sort === 'manual'}>
           {!items.length && id && <div className="empty-state"><div className="empty-symbol"><House size={30} /></div><h2>{t('noTasks')}</h2><p>{t(personal?.activeFilters.length ? 'noFilterMatches' : 'noNowTasks')}</p><button onClick={() => setView('board')}>{t('board')}</button></div>}
           {items.map(card)}
-        </div> : <>
+        </TaskDragSurface> : <>
 
           <label className="mobile-column-select">{t('column')}<select value={column} onChange={e => setColumn(e.target.value as TaskColumn)}>{columns.map(c => <option key={c} value={c}>{t('column_' + c)}</option>)}</select></label>
           <div className="board-gestures" onTouchStart={e => { swipeStart.current = { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY }; }} onTouchEnd={e => {
             const dx = e.changedTouches[0]!.clientX - swipeStart.current.x, dy = e.changedTouches[0]!.clientY - swipeStart.current.y;
             if (Math.abs(dx) > 70 && Math.abs(dy) < 50) { const next = columns[columns.indexOf(column) + (dx < 0 ? 1 : -1)]; if (next) setColumn(next); lastSwipe.current = Date.now(); }
           }} onClickCapture={e => { if (Date.now() - lastSwipe.current < 350) { e.preventDefault(); e.stopPropagation(); } }}>
-            <TaskBoard items={items} entities={entities.data ?? []} column={column} lanes={activeView?.definition.epicLanes ?? false} empty={activeView?.definition.showEmptyLanes ?? false} renderCard={card} capture={(column, epicId) => { setCaptureEpic(epicId ?? null); setCapture(column); }} drop={(id, changes) => void move(id, changes)} />
+            <TaskBoard manual={activeView?.definition.sort === 'manual'} items={items} entities={entities.data ?? []} column={column} lanes={activeView?.definition.epicLanes ?? false} empty={activeView?.definition.showEmptyLanes ?? false} renderCard={card} capture={(column, epicId) => { setCaptureEpic(epicId ?? null); setCapture(column); }} drop={(id, changes) => { void (async () => { const updated = await move(id, changes); if (updated && activeView?.definition.sort === 'manual') await reorder(id, null, updated); })(); }} />
           </div>
         </>}
         {list.hasNextPage && <button disabled={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>{t('loadMore')}</button>}
