@@ -215,3 +215,20 @@ a direct jump to planning. Keep all inheritance, dependency, recurrence, conflic
 confirmation and autosave behavior. The title grows with its text; formatting uses
 compact labeled icon buttons. Preview-only illustration and sample tasks are not
 production data.
+
+### Shared layout foundation — 2026-10-15
+
+All workspace pages use one left-aligned frame with a 24px desktop gutter (16px on
+mobile) and a 1120px content limit for settings/libraries. Boards remain full-width.
+Never center another page frame inside this one. Back and Search share one utility
+row; headings, content and footers follow the same frame edges. Settings use a 224px
+navigation column, 32px gutter and flexible content column; mobile turns this into
+a horizontal navigation row above the content. Navigation labels are left-aligned.
+
+Use the shared spacing tokens (4/8/12/16/24/32px): 8px label-to-control/action gaps,
+16px field spacing, 24px section spacing/panel padding, 16px panel padding on mobile.
+Two-column forms stack on mobile; icons do not shrink to accommodate labels. Task
+chrome deliberately uses the compact density variant while retaining the same scale.
+Loading, empty, error and reauthentication states use the same content boundaries as
+successful states. Review both Swedish and English, light/dark and desktop/mobile;
+functional tests alone do not verify alignment or visual hierarchy.

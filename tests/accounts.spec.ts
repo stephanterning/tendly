@@ -64,6 +64,9 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await webkitEditorJourney(context, origin);
   await settings(page);
   await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
+  // Nested settings must share the workspace edge instead of centering a second frame.
+  const edges = await page.evaluate(() => ['.workspace-utilities', '.settings-heading', '.settings-layout', '.settings-footer'].map(selector => Math.round(document.querySelector(selector)!.getBoundingClientRect().left)));
+  expect(new Set(edges).size).toBe(1);
   const offlineContext = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US', permissions: ['clipboard-read', 'clipboard-write'] });
   const offline = await offlineContext.newPage();
   await authenticator(offlineContext, offline);

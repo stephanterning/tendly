@@ -1,0 +1,133 @@
+/* Shared geometry. Page frames own outer spacing; children never re-center themselves. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-6: 24px; --space-8: 32px;
+  --page-gutter: 24px; --page-width: 1120px; --panel-padding: 24px;
+  --section-gap: 24px; --field-gap: 16px; --control-height: 44px;
+}
+.workspace-main { padding: 0 var(--page-gutter) var(--space-8); }
+.workspace-utilities {
+  display: flex; align-items: center; gap: var(--space-2); min-height: 64px;
+  margin: 0; padding: var(--space-2) 0;
+  width: 100%; max-width: var(--page-width);
+}
+.workspace-utilities .utility-search { margin-left: auto; }
+.workspace-utilities>.quiet { padding-inline: 0; }
+.page-layout { width: 100%; max-width: var(--page-width); padding-top: var(--space-6); }
+.page-layout[hidden] { display: none; }
+.page-heading,.settings-heading {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4); margin: 0 0 var(--section-gap); padding: 0;
+}
+.page-heading h1,.settings-heading h1 { font-size: 1.5rem; line-height: 1.3; margin: 0; }
+.page-heading p { margin: var(--space-2) 0 0; }
+.page-layout .library-page,.page-layout .more-links { max-width: none; }
+.page-layout .app-shell { width: 100%; }
+.settings-heading { min-height: var(--control-height); }
+.settings-heading>button { flex-shrink: 0; }
+.settings-layout,.workspace-main .settings-layout {
+  display: grid; grid-template-columns: 224px minmax(0,1fr); align-items: start;
+  gap: var(--space-8); width: 100%; max-width: none; margin: 0; padding: 0;
+}
+.settings-layout>aside { min-width: 0; }
+.settings-layout>aside>p { margin: 0 0 var(--space-3); }
+.settings-layout>aside nav { display: grid; margin: 0; gap: var(--space-1); padding: 0; }
+.settings-layout>aside nav button {
+  justify-content: flex-start; text-align: left; gap: var(--space-3);
+  padding: var(--space-3); min-height: var(--control-height); line-height: 1.4;
+  overflow-wrap: normal; hyphens: none;
+}
+button>svg,h2>svg { flex-shrink: 0; }
+.settings-footer { margin: var(--space-6) 0 0; padding: var(--space-4) 0; border-top: 1px solid var(--line); }
+.settings-message>button { margin-top: var(--space-2); }
+.panel { padding: var(--panel-padding); margin: 0 0 var(--section-gap); }
+.panel>:last-child { margin-bottom: 0; }
+.panel>h2,.section-heading h2 { margin: 0; font-size: 1.05rem; }
+.panel>h2+* { margin-top: var(--space-3); }
+.panel>p { margin: var(--space-3) 0; }
+.section-heading { min-height: var(--control-height); gap: var(--space-4); margin-bottom: var(--space-3); }
+form { margin-top: var(--space-4); }
+label { gap: var(--space-2); margin-bottom: var(--field-gap); line-height: 1.4; }
+.form-grid,.field-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 var(--space-4); }
+input,select { min-height: var(--control-height); padding: var(--space-2) var(--space-3); }
+textarea { padding: var(--space-3); }
+button { padding: var(--space-2) var(--space-3); min-height: var(--control-height); }
+.button-row { gap: var(--space-2); align-items: center; }
+.check-label { margin: 0; gap: var(--space-2); }
+.check-label input { min-height: 18px; }
+fieldset>legend { font-weight: 600; margin-bottom: var(--space-3); }
+fieldset+fieldset { margin-top: var(--space-6); }
+.item-list,.entity-list { margin: var(--space-4) 0; }
+.item-list>li,.entity-list>li { padding-block: var(--space-3); gap: var(--space-3); }
+.entity-main { padding: var(--space-2) 0; }
+.library-tabs { gap: var(--space-2); margin-bottom: var(--space-6); }
+.planning-documents { gap: var(--space-3); margin: var(--space-3) 0 var(--space-8); }
+.planning-documents article { padding: var(--space-4); gap: var(--space-4); background: var(--surface); }
+.planning-documents .button-row { margin: 0; }
+.more-links { gap: var(--space-3); }
+.more-links>button { padding: var(--space-4); }
+.dialog-content { padding: var(--panel-padding); }
+.dialog-heading { margin-bottom: var(--space-4); min-height: var(--control-height); }
+.dialog-heading h2 { line-height: 1.4; }
+.dialog-content .button-row { margin-top: var(--space-4); }
+.dialog-content .planning-documents .button-row { margin-top: 0; }
+.filter-group { padding: var(--space-3); margin: var(--space-2) 0; }
+.filter-rule { gap: var(--space-2); margin: var(--space-2) 0; }
+.filter-child { gap: var(--space-2); }
+.search-results { gap: var(--space-2); }
+.search-results button { justify-content: stretch; justify-items: start; padding: var(--space-3); }
+.icon-picker+button { margin-bottom: var(--space-4); }
+.filter-preview { margin-top: var(--space-6); padding-top: var(--space-6); }
+.auth-layout { padding: var(--space-6); }
+.auth-layout>.brand { margin: 0 0 var(--space-6); }
+.auth-card { padding: var(--panel-padding); }
+.auth-card h1 { margin: var(--space-4) 0 var(--space-3); }
+.auth-card .text-button { justify-content: flex-start; text-align: left; }
+.auth-layout .locale-picker { margin: var(--space-4) auto; }
+/* Compact task chrome is a deliberate density variant of the same spacing scale. */
+.task-workspace { padding: 0 var(--space-4) var(--space-8); }
+.board-toolbar { margin: 0 calc(-1 * var(--space-4)) var(--space-3); padding: var(--space-2) var(--space-4); gap: var(--space-3); }
+.board-toolbar .current-place { margin: 0; }
+.board-toolbar .current-place select { min-height: 36px; padding: var(--space-1) var(--space-2); }
+.task-detail-sheet>.dialog-heading { margin: 0; padding-inline: var(--panel-padding); }
+.task-detail-sheet>.save-status { padding-inline: var(--panel-padding); }
+.task-detail-sheet>.alert { margin-inline: var(--panel-padding); }
+.task-detail-content { padding: var(--space-4) var(--panel-padding) var(--space-8); }
+.task-detail-properties { padding: var(--panel-padding); }
+.task-detail-properties .form-grid { grid-template-columns: 1fr; }
+.task-detail-properties label { margin-bottom: var(--field-gap); }
+.task-detail-content>fieldset+fieldset { margin-top: 0; }
+.task-detail-content .content-panel { margin-top: var(--section-gap); padding-top: var(--space-4); }
+.task-detail-content .task-structure { margin-top: var(--space-4); }
+.task-detail-content .task-structure>section { margin-block: var(--space-4); }
+.task-detail-content .subtask-capture { margin: var(--space-3) 0 var(--space-4); }
+.rich-toolbar select { min-height: 32px; padding: var(--space-1); }
+@media(min-width:1100px) { .planning-editor .filter-preview { margin-top: 0; padding: 0 0 0 var(--space-6); } }
+@media(max-width:720px) {
+  :root { --page-gutter: 16px; --panel-padding: 16px; --section-gap: 24px; }
+  .workspace-main,.task-workspace { padding: 0 var(--page-gutter) calc(96px + env(safe-area-inset-bottom)); }
+  .workspace-utilities { min-height: 56px; }
+  .page-layout { padding-top: var(--space-4); }
+  .page-heading,.settings-heading { gap: var(--space-3); margin-bottom: var(--space-4); flex-wrap: wrap; }
+  .page-heading h1,.settings-heading h1 { font-size: 1.3rem; }
+  .settings-layout,.workspace-main .settings-layout { grid-template-columns: 1fr; gap: var(--space-4); }
+  .settings-layout>aside nav,.workspace-main .settings-layout aside nav { display: flex; overflow-x: auto; gap: var(--space-1); padding-bottom: var(--space-1); }
+  .settings-layout>aside nav button { white-space: nowrap; flex-shrink: 0; padding: var(--space-2) var(--space-3); }
+  .form-grid,.field-grid { grid-template-columns: 1fr; }
+  .settings-footer { margin-top: var(--space-4); }
+  .member-actions { flex-wrap: wrap; max-width: 100%; }
+  .planning-documents article { gap: var(--space-3); }
+  .planning-documents article>.button-row { flex-basis: 100%; }
+  .planning-documents .button-row button { flex: 0 1 auto; }
+  .dialog-content { padding: var(--panel-padding); padding-top: max(16px,env(safe-area-inset-top)); padding-bottom: max(24px,env(safe-area-inset-bottom)); }
+  .dialog-content.task-detail-sheet { padding: 0; }
+  .task-detail-properties { padding-bottom: max(24px,env(safe-area-inset-bottom)); }
+  .board-toolbar { margin: 0 calc(-1 * var(--page-gutter)) var(--space-3); padding: var(--space-2) var(--page-gutter); }
+  .board-toolbar .current-place select,.rich-toolbar select { min-height: 44px; }
+  .auth-layout { padding: var(--space-4); }
+}
+/* Brand, household context and menu icons share the expanded sidebar's inset. */
+.workspace-nav .brand { padding-inline: var(--space-3); }
+.workspace-nav .nav-household { padding-inline: var(--space-3); }
+.workspace-nav nav button { padding-inline: var(--space-3); }
+.nav-collapsed .workspace-nav .brand,.nav-collapsed .workspace-nav nav button { padding-inline: 0; }
