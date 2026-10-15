@@ -182,3 +182,13 @@ page. Include open and covered utility trailers, with English and Swedish search
 terms (`trailer`, `släp`); keep the coherent monochrome outline style. Browse results
 in manageable batches and show the result count. English icon names remain searchable
 in either UI language; common household terms have Swedish aliases.
+
+### Owner review clarification — drag previews (2026-10-15)
+
+In manually ordered views, dragging shows a card-sized insertion placeholder and
+moves surrounding cards aside. Hovering over a card's middle for a short dwell
+(650 ms) changes the preview to a highlighted subtask target. Moving away cancels
+that intent; dropping applies the previewed action. Use visual feedback rather
+than explanatory drop-zone text. Existing consequential-action confirmation and
+menu alternatives remain available. Automatically sorted views retain their sort
+order and do not offer a misleading manual insertion slot.
