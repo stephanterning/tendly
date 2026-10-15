@@ -1,7 +1,8 @@
+import { Section } from '../components/Section.js';
 import { useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ArrowUp, ArrowDown, Plus } from 'lucide-react';
+import { Settings2, Trash2, ArrowUp, ArrowDown, Plus } from 'lucide-react';
 import { entityKinds, palette, type Entity, type EntityKind } from '@tendly/shared';
 import { api, result } from '../accounts/api.js';
 import { Dialog } from '../components/ui/dialog.js';
@@ -67,7 +68,7 @@ function EntityEditor({ entity, kind, householdId, onClose, onSaved }: { entity:
       <div className="button-row"><button className="primary" type="submit">{t('save')}</button><button type="button" onClick={onClose}>{t('cancel')}</button></div>
       {entity && <div className="entity-danger button-row">
         {kind === 'epic' && <button type="button" onClick={() => void run(() => result(api.PATCH('/api/v1/households/{householdId}/entities/{id}', { params: { path: { householdId, id: entity.id } }, body: { baseVersion: entity.version, changes: { archived: !entity.archived } } })))}>{t(entity.archived ? 'restoreEntity' : 'archiveEntity')}</button>}
-        <button type="button" className="danger" onClick={() => { if (window.confirm(t('deleteEntityConfirm'))) void run(() => result(api.DELETE('/api/v1/households/{householdId}/entities/{id}', { params: { path: { householdId, id: entity.id } }, body: { baseVersion: entity.version } }))); }}>{t('deleteEntity')}</button>
+        <button type="button" className="danger" onClick={() => { if (window.confirm(t('deleteEntityConfirm'))) void run(() => result(api.DELETE('/api/v1/households/{householdId}/entities/{id}', { params: { path: { householdId, id: entity.id } }, body: { baseVersion: entity.version } }))); }}><Trash2 size={16} aria-hidden="true" />{t('deleteEntity')}</button>
       </div>}
     </fieldset></form>
   </Dialog>;
@@ -77,7 +78,7 @@ function SizeSettings({ householdId }: { householdId: string }) {
   const queries = useQueryClient();
   const settings = useQuery({ queryKey: ['planning', householdId, 'settings'], queryFn: () => result(api.GET('/api/v1/households/{householdId}/planning-settings', { params: { path: { householdId } } })) });
   const [error, setError] = useState(''), [busy, setBusy] = useState(false), [saved, setSaved] = useState(false);
-  return <details className="panel defaults-panel"><summary>{t('householdDefaults')}</summary>
+  return <Section className="panel defaults-panel" title={t('householdDefaults')} icon={Settings2}>
     {settings.data && <form key={settings.data.version} onSubmit={event => {
       event.preventDefault(); const data = new FormData(event.currentTarget);
       const thresholds: [number, number, number, number] = [Number(data.get('XS')), Number(data.get('S')), Number(data.get('M')), Number(data.get('L'))];
@@ -86,5 +87,5 @@ function SizeSettings({ householdId }: { householdId: string }) {
     }}><fieldset disabled={busy}><h3>{t('sizeThresholds')}</h3><p className="small muted">{t('thresholdsHelp')}</p><div className="form-grid">{['XS', 'S', 'M', 'L'].map((size, index) => <label key={size}>{size}<input name={size} type="number" min={1} required defaultValue={settings.data!.thresholds[index]} /></label>)}</div><button type="submit">{t('save')}</button></fieldset></form>}
     {(error || settings.isError) && <p role="alert">{t(error || 'network_error')}</p>}
     {saved && <p role="status">{t('saved')}</p>}
-  </details>;
+  </Section>;
 }

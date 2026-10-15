@@ -131,3 +131,36 @@ fieldset+fieldset { margin-top: var(--space-6); }
 .workspace-nav .nav-household { padding-inline: var(--space-3); }
 .workspace-nav nav button { padding-inline: var(--space-3); }
 .nav-collapsed .workspace-nav .brand,.nav-collapsed .workspace-nav nav button { padding-inline: 0; }
+
+/* Visible, labeled groups make planning controls discoverable without disclosures. */
+.icon-label,.property-section>h3 { display: flex; align-items: center; gap: var(--space-2); }
+.icon-label>svg,.property-section>h3>svg { flex-shrink: 0; }
+.property-section { border-top: 1px solid var(--line); padding-top: var(--space-4); margin-top: var(--space-6); min-width: 0; }
+.property-section>h3 { margin: 0 0 var(--space-3); font-size: .9rem; font-weight: 650; line-height: 1.4; }
+.property-section h4 { margin: var(--space-4) 0 var(--space-2); font-size: .85rem; }
+.property-section>.small { margin-block: var(--space-2); }
+.size-selector { margin: 0 0 var(--space-3); }
+.size-selector>legend { font-size: .85rem; margin-bottom: var(--space-2); }
+.size-options { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: var(--space-1); }
+.size-options button { padding-inline: var(--space-1); }
+.size-options button[aria-pressed=true],.priority-toggle[aria-pressed=true] { background: var(--tint); border-color: var(--accent); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.priority-toggle { width: 100%; justify-content: flex-start; margin-bottom: var(--space-2); }
+.date-row { display: grid; grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); align-items: end; gap: var(--space-2); }
+.date-row input { min-width: 0; width: 100%; padding-inline: var(--space-2); }
+.date-row label { min-width: 0; font-size: .75rem; }
+.date-hint { font-size: .75rem; line-height: 1.5; }
+.task-detail-layout { grid-template-columns: minmax(0,1fr) 320px; }
+.task-detail-properties .date-row label { margin-bottom: var(--space-3); }
+button.danger { color: #b42332; border-color: #b4233260; }
+[data-theme=dark] button.danger { color: #ff9da6; border-color: #ff9da660; }
+button.danger:hover { background: light-dark(#fff0f1,#4a252b); }
+.task-actions { border-top: 1px solid var(--line); padding-top: var(--space-4); margin-top: var(--space-6); }
+.task-actions>.button-row { display: grid; }
+.task-actions>.button-row>button { justify-content: flex-start; }
+.code-entry>h3 { margin-top: 0; font-size: 1rem; }
+.upload-button { flex-direction: row; gap: var(--space-2); margin-bottom: 0; }
+.check-label input { padding: 0; margin: 0; flex-shrink: 0; }
+@media(max-width:720px) {
+  .task-detail-layout { grid-template-columns: 1fr; }
+  .date-row { grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); }
+}

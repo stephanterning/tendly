@@ -14,10 +14,10 @@ export async function hierarchyJourney(page: Page) {
   await page.getByLabel('New subtask', { exact: true }).fill('Prepare shed');
   await page.getByRole('button', { name: 'Add subtask', exact: true }).click();
   await page.getByRole('button', { name: 'Prepare shed Someday', exact: true }).click();
-  await expect(page.getByRole('checkbox', { name: 'High priority', exact: true })).toBeChecked();
+  await expect(page.getByRole('button', { name: 'High priority', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('combobox', { name: 'Column', exact: true }).selectOption('todo');
   await expect(page.getByRole('dialog').getByRole('status').first()).toContainText('Saved');
-  await page.getByText('Planning details', { exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Planning details', exact: true })).toBeVisible();
   await page.getByRole('combobox', { name: 'Family car · Resources', exact: true }).selectOption('exclude');
   await expect(page.getByRole('dialog').getByRole('status').first()).toContainText('Saved');
   const changed = await page.request.patch(root + '/tasks/' + parent.id, { headers, data: { baseVersion: parent.version, changes: { resources: [car.id, ladder.id, trailer.id] } } });
@@ -25,7 +25,7 @@ export async function hierarchyJourney(page: Page) {
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click();
   await page.getByRole('navigation').getByRole('button', { name: 'Now', exact: true }).filter({ visible: true }).click();
   await page.getByRole('button', { name: 'Prepare shed', exact: true }).click();
-  await page.getByText('Planning details', { exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Planning details', exact: true })).toBeVisible();
   await expect(page.getByText('Currently applies:', { exact: false }).filter({ hasText: 'Tall ladder' }).filter({ hasText: 'Utility trailer' })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByText('Blocked by', { exact: true }).scrollIntoViewIfNeeded();

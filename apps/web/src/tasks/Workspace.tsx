@@ -9,7 +9,7 @@ import { PlanningLibrary, usePlanning } from '../planning/PlanningLibrary.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { House, LayoutGrid, MoreHorizontal, Plus, PanelLeftClose, PanelLeftOpen, Check, Flag, Clock3, Settings2, Shapes, ArrowLeft, Search as SearchIcon, Star, MapPin, ListChecks } from 'lucide-react';
+import { House, LayoutGrid, MoreHorizontal, Plus, PanelLeftClose, PanelLeftOpen, Check, CircleAlert, Clock3, Settings2, Shapes, ArrowLeft, Search as SearchIcon, Star, MapPin, ListChecks } from 'lucide-react';
 import { columns, type Account, type Task, type TaskChanges, type TaskColumn, type Entity, type ViewDefinition } from '@tendly/shared';
 import { api, result } from '../accounts/api.js';
 import { Settings } from '../accounts/Settings.js';
@@ -218,7 +218,7 @@ function TaskCard({ task, entities, members, open, complete, properties }: { tas
         {properties?.includes('estimate') && task.estimateMinutes !== null && <small>{task.estimateMinutes} min</small>}
         {properties?.includes('progress') && task.progress.total > 0 && <span aria-label={t('subtaskProgress', task.progress)}><ListChecks size={13} />{task.progress.done}/{task.progress.total}</span>}
         {task.parentId && <span title={task.ancestors.map(a => a.title).join(' › ')}>↳ {task.ancestors.at(-1)?.title}</span>}
-        {properties?.includes('priority') && task.high && <span title={t('high')}><Flag size={13} aria-label={t('high')} /></span>}
+        {properties?.includes('priority') && task.high && <span title={t('high')}><CircleAlert size={13} aria-label={t('high')} /></span>}
         {properties?.includes('deadline') && task.deadlineDate && <span className={task.overdue ? 'deadline overdue' : 'deadline'}>{task.overdue && <span>{t('overdue')} · </span>}{new Intl.DateTimeFormat(i18n.language, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(task.deadlineDate + 'T12:00:00Z'))}</span>}
         {!task.available && <span title={t('unavailable')}><Clock3 size={13} />{t('unavailable')}</span>}
         {properties?.includes('assignees') && task.assignees.map(id => <span className="card-avatar" key={id} title={members.find(m => m.id === id)?.name}>{members.find(m => m.id === id)?.name.slice(0, 1).toUpperCase()}</span>)}
