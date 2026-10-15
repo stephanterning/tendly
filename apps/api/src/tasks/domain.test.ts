@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { availability, dateInstant, moveTaskToColumn, suggestSize, taskColumn } from './domain.js';
+import { promotedColumn, availability, dateInstant, moveTaskToColumn, suggestSize, taskColumn } from './domain.js';
 it('keeps six visible columns and reopens to the immediate previous column', () => {
   let task = moveTaskToColumn({ status: 'todo', bucket: 'someday', precedingColumn: null }, 'within_year');
   task = moveTaskToColumn(task, 'in_progress');
@@ -20,4 +20,16 @@ it('uses household local days including DST and optional explicit times', () => 
 });
 it('suggests size at inclusive configurable effort boundaries', () => {
   expect([60, 61, 240, 480, 1440, 1441].map(n => suggestSize(n, [60, 240, 480, 1440]))).toEqual(['XS', 'S', 'S', 'M', 'L', 'XL']);
+});
+
+it('promotes future columns forward at calendar horizons and the exact local start', () => {
+  const now = Date.parse('2026-01-31T11:00:00Z');
+  const promote = (startDate: string | null, column: 'someday' | 'within_year' | 'within_month' | 'todo' | 'in_progress' | 'done' = 'someday', startTime: string | null = null) => promotedColumn({ column, startDate, startTime }, 'Europe/Stockholm', now);
+  expect(['2027-02-01', '2027-01-31', '2026-03-01', '2026-02-28', '2026-01-31', '2026-01-30'].map(date => promote(date))).toEqual(['someday', 'within_year', 'within_year', 'within_month', 'todo', 'todo']);
+  expect(promote('2026-01-31', 'within_year', '12:01')).toBe('within_month');
+  expect(promote('2026-01-31', 'within_month', '12:00')).toBe('todo');
+  expect(promote('2028-01-01', 'within_month')).toBe('within_month');
+  expect(promote(null)).toBe('someday');
+  for (const column of ['todo', 'in_progress', 'done'] as const) expect(promote('2026-01-01', column)).toBe(column);
+  expect(promotedColumn({ column: 'someday', startDate: '2026-10-16', startTime: null }, 'Europe/Stockholm', Date.parse('2026-10-15T22:00:00Z'))).toBe('todo');
 });

@@ -1,3 +1,4 @@
+import { moveTaskToColumn, promotedColumn } from '../tasks/domain.js';
 import { cleanOrphanFiles } from '../content/cleanup.js';
 import pg from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -32,6 +33,15 @@ export async function maintainHousehold(db: Database, householdId: string, now =
     const archiveCutoff = archiveDays === null ? null : localNow.subtract({ days: archiveDays }).epochMilliseconds;
     const graph = await lifecycle.tasks.graph(tx, householdId, household.timezone);
     for (const task of graph.rows) {
+      if (!task.trashedAt && !task.archivedAt) {
+        const effective = graph.task(task.id);
+        const column = promotedColumn(effective, household.timezone, now.getTime());
+        if (column !== effective.column) {
+          const version = task.version + 1;
+          await tx.update(schema.tasks).set({ ...moveTaskToColumn(task, column), version, fieldVersions: { ...task.fieldVersions, column: version }, updatedAt: now }).where(and(eq(schema.tasks.id, task.id), eq(schema.tasks.householdId, householdId)));
+          await tx.insert(schema.taskActivities).values({ taskId: task.id, version, fields: ['column'] });
+        }
+      }
       if (task.trashedAt || task.archivedAt || archiveDays === null || !task.completedAt || archiveCutoff === null || task.completedAt.getTime() > archiveCutoff || graph.task(task.id).unfinishedDescendants) continue;
       await tx.update(schema.tasks).set({ archivedAt: now, version: task.version + 1, fieldVersions: { ...task.fieldVersions, lifecycle: task.version + 1 }, updatedAt: now }).where(and(eq(schema.tasks.id, task.id), eq(schema.tasks.householdId, householdId)));
       await tx.insert(schema.taskActivities).values({ taskId: task.id, version: task.version + 1, fields: ['auto_archived'] });
