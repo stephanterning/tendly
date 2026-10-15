@@ -1,7 +1,8 @@
+import { Section } from '../components/Section.js';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Fingerprint, House, LogOut, Mail, ShieldCheck, UserRound, UsersRound } from 'lucide-react';
+import { Settings2, Trash2, Fingerprint, House, LogOut, Mail, ShieldCheck, UserRound, UsersRound } from 'lucide-react';
 import type { Account } from '@tendly/shared';
 import { InvitationCodeEntry, InvitePanel } from './Invitations.js';
 import { api, result } from './api.js';
@@ -59,7 +60,7 @@ function AccountPanel({ account, run, busy }: { account: Account; run: Run; busy
     void run(() => result(api.PATCH('/api/v1/account', { body: { name: String(data.get('name')), language: data.get('language') as 'en' | 'sv', theme: data.get('theme') as 'system' | 'light' | 'dark' } })));
   }
   return <>
-    <section className="panel"><h2>{t('profile')}</h2>
+    <section className="panel"><h2 className="icon-label"><UserRound size={20} aria-hidden="true" />{t('profile')}</h2>
       {account.avatar && <img className="profile-avatar" src={account.avatar} alt={account.name} />}
       <label className="upload-button">{t('profilePhoto')}<input disabled={busy} type="file" accept="image/*" onChange={e => { const file = e.target.files?.[0]; if (!file) return; void run(async () => { const bitmap = await createImageBitmap(file); const canvas = document.createElement('canvas'); canvas.width = canvas.height = 192; const context = canvas.getContext('2d')!; const side = Math.min(bitmap.width, bitmap.height); context.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, 192, 192); bitmap.close(); await result(api.PUT('/api/v1/account/avatar', { body: { image: canvas.toDataURL('image/jpeg', .85) } })); }); }} /></label>
       {account.avatar && <button onClick={() => void run(() => result(api.PUT('/api/v1/account/avatar', { body: { image: null } })))}>{t('removePhoto')}</button>}<p className="muted">{account.email}</p>
@@ -73,7 +74,7 @@ function AccountPanel({ account, run, busy }: { account: Account; run: Run; busy
     </section>
     <section className="panel"><h2><Fingerprint size={21} />{t('passkeys')}</h2><p className="muted">{t('passkeysText')}</p>
       {passkeys.isError && <p role="alert">{t('network_error')} <button onClick={() => void passkeys.refetch()}>{t('retry')}</button></p>}
-      <ul className="item-list">{passkeys.data?.map((key) => <li key={key.id}><div><strong>{key.name}</strong><span className="small muted">{new Date(key.createdAt).toLocaleDateString(i18n.language)}</span></div><button className="quiet" disabled={busy} onClick={() => { if (window.confirm(t('removeConfirm'))) void run(() => result(api.DELETE('/api/v1/account/passkeys/{keyId}', { params: { path: { keyId: key.id } }, body: {} }))); }}>{t('remove')}</button></li>)}</ul>
+      <ul className="item-list">{passkeys.data?.map((key) => <li key={key.id}><div><strong>{key.name}</strong><span className="small muted">{new Date(key.createdAt).toLocaleDateString(i18n.language)}</span></div><button className="quiet danger" disabled={busy} onClick={() => { if (window.confirm(t('removeConfirm'))) void run(() => result(api.DELETE('/api/v1/account/passkeys/{keyId}', { params: { path: { keyId: key.id } }, body: {} }))); }}><Trash2 size={16} aria-hidden="true" />{t('remove')}</button></li>)}</ul>
       <form onSubmit={(event) => { event.preventDefault(); const data = new FormData(event.currentTarget); void run(() => enroll({ flow: 'add' }, String(data.get('keyName')))); }}><fieldset disabled={busy}><label>{t('passkeyName')}<input name="keyName" required maxLength={100} placeholder="MacBook, iPhone…" /></label><button type="submit"><Fingerprint size={17} />{t('addPasskey')}</button></fieldset></form>
     </section>
     <section className="panel"><h2><ShieldCheck size={21} />{t('sessions')}</h2>
@@ -87,12 +88,12 @@ function MembersPanel({ household, run, busy }: { household: Account['households
   const members = useQuery({ queryKey: ['members', household.id], queryFn: () => result(api.GET('/api/v1/households/{id}/members', { params: { path: { id: household.id } } })) });
   return <>
     <section className="panel"><h2>{household.name}</h2><p className="muted small">{household.timezone}</p>
-      {household.role === 'admin' && <details><summary>{t('householdSettings')}</summary><form key={household.name + household.timezone} onSubmit={e => { e.preventDefault(); const data = new FormData(e.currentTarget); void run(() => result(api.PUT('/api/v1/households/{id}', { params: { path: { id: household.id } }, body: { name: String(data.get('name')), timezone: String(data.get('timezone')), previousName: household.name, previousTimezone: household.timezone } }))); }}><fieldset disabled={busy}><label>{t('householdName')}<input name="name" required defaultValue={household.name} maxLength={100} /></label><label>{t('timezone')}<input name="timezone" required defaultValue={household.timezone} maxLength={100} /></label><p className="muted">{t('timezoneChangeHint')}</p><button>{t('save')}</button></fieldset></form></details>}
+      {household.role === 'admin' && <Section title={t('householdSettings')} icon={Settings2}><form key={household.name + household.timezone} onSubmit={e => { e.preventDefault(); const data = new FormData(e.currentTarget); void run(() => result(api.PUT('/api/v1/households/{id}', { params: { path: { id: household.id } }, body: { name: String(data.get('name')), timezone: String(data.get('timezone')), previousName: household.name, previousTimezone: household.timezone } }))); }}><fieldset disabled={busy}><label>{t('householdName')}<input name="name" required defaultValue={household.name} maxLength={100} /></label><label>{t('timezone')}<input name="timezone" required defaultValue={household.timezone} maxLength={100} /></label><p className="muted">{t('timezoneChangeHint')}</p><button>{t('save')}</button></fieldset></form></Section>}
       {members.isError && <p role="alert">{t('network_error')} <button onClick={() => void members.refetch()}>{t('retry')}</button></p>}
       <ul className="item-list members-list">{members.data?.map((member) => <li key={member.id}>
         <div><strong>{member.name}</strong><span className="small muted">{member.email}</span></div>
         {household.role === 'admin' ? <div className="member-actions"><label><span className="sr-only">{t('role')} {member.name}</span><select disabled={busy} value={member.role} onChange={(event) => void run(() => result(api.PATCH('/api/v1/households/{id}/members/{userId}', { params: { path: { id: household.id, userId: member.id } }, body: { role: event.target.value as 'admin' | 'member' } })))}><option value="admin">{t('admin')}</option><option value="member">{t('member')}</option></select></label>
-          <details><summary aria-label={member.name}>•••</summary><div className="member-menu"><button disabled={busy} onClick={() => void run(() => result(api.POST('/api/v1/households/{id}/members/{userId}/recovery', { params: { path: { id: household.id, userId: member.id } }, body: {} })), 'emailSent')}>{t('assist')}</button><button disabled={busy} onClick={() => { if (window.confirm(t('memberConfirm'))) void run(() => result(api.DELETE('/api/v1/households/{id}/members/{userId}', { params: { path: { id: household.id, userId: member.id } }, body: {} }))); }}>{t('remove')}</button></div></details>
+          <details><summary aria-label={member.name}>•••</summary><div className="member-menu"><button disabled={busy} onClick={() => void run(() => result(api.POST('/api/v1/households/{id}/members/{userId}/recovery', { params: { path: { id: household.id, userId: member.id } }, body: {} })), 'emailSent')}>{t('assist')}</button><button className="danger" disabled={busy} onClick={() => { if (window.confirm(t('memberConfirm'))) void run(() => result(api.DELETE('/api/v1/households/{id}/members/{userId}', { params: { path: { id: household.id, userId: member.id } }, body: {} }))); }}><Trash2 size={16} aria-hidden="true" />{t('remove')}</button></div></details>
         </div> : <span className="badge">{t(member.role)}</span>}
       </li>)}</ul>
     </section>
@@ -103,9 +104,9 @@ function SmtpPanel({ run, busy }: { run: Run; busy: boolean }) {
   const { t } = useTranslation();
   const smtp = useQuery({ queryKey: ['smtp'], queryFn: () => result(api.GET('/api/v1/settings/smtp')) });
   if (smtp.isPending) return <p role="status">{t('loading')}</p>;
-  if (smtp.isError) return <section className="panel settings-message" role="alert"><h2>{t('smtp')}</h2><p>{t(errorKey(smtp.error))}</p><button onClick={() => { if (errorKey(smtp.error) === 'reauthentication_required') void run(signIn); else void smtp.refetch(); }}>{t(errorKey(smtp.error) === 'reauthentication_required' ? 'reauth' : 'retry')}</button></section>;
+  if (smtp.isError) return <section className="panel settings-message" role="alert"><h2 className="icon-label"><Mail size={20} aria-hidden="true" />{t('smtp')}</h2><p>{t(errorKey(smtp.error))}</p><button onClick={() => { if (errorKey(smtp.error) === 'reauthentication_required') void run(signIn); else void smtp.refetch(); }}>{t(errorKey(smtp.error) === 'reauthentication_required' ? 'reauth' : 'retry')}</button></section>;
   const config = smtp.data;
-  return <section className="panel"><h2>{t('smtp')}</h2><p className="muted">{t('smtpText')}</p><form key={JSON.stringify(config)} onSubmit={(event) => {
+  return <section className="panel"><h2 className="icon-label"><Mail size={20} aria-hidden="true" />{t('smtp')}</h2><p className="muted">{t('smtpText')}</p><form key={JSON.stringify(config)} onSubmit={(event) => {
     event.preventDefault(); const data = new FormData(event.currentTarget); const password = String(data.get('password'));
     void run(() => result(api.PUT('/api/v1/settings/smtp', { body: { host: String(data.get('host')), port: Number(data.get('port')), security: data.get('security') as 'tls' | 'starttls', username: String(data.get('username')), sender: String(data.get('sender')), ...(password ? { password } : {}) } })));
   }}><fieldset disabled={busy}>

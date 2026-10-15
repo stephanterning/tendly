@@ -71,7 +71,7 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   const offline = await offlineContext.newPage();
   await authenticator(offlineContext, offline);
   await offline.goto(origin);
-  await offline.getByText('Have an invitation code?', { exact: true }).click();
+  await expect(offline.getByRole('heading', { name: 'Have an invitation code?', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Household', exact: true }).click();
   await page.getByLabel('Email address', { exact: true }).fill('offline@example.test');
   await page.getByRole('button', { name: 'Create invitation code' }).click();

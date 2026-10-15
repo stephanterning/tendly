@@ -18,7 +18,14 @@ export async function taskJourney(page: Page) {
   await expect(page.getByRole('combobox', { name: 'Column', exact: true })).toHaveValue('someday');
   await page.getByRole('combobox', { name: 'Column', exact: true }).selectOption('within_year');
   await page.getByRole('combobox', { name: 'Epic', exact: true }).selectOption({ label: 'House' });
-  await page.getByRole('combobox', { name: 'Size', exact: true }).selectOption('M');
+  const medium = page.getByRole('group', { name: 'Size', exact: true }).getByRole('button', { name: 'M', exact: true });
+  await medium.click();
+  await expect(medium).toHaveAttribute('aria-pressed', 'true');
+  await medium.click();
+  await expect(medium).toHaveAttribute('aria-pressed', 'false');
+  await medium.click();
+  await expect(page.getByRole('heading', { name: 'Dates', exact: true })).toBeVisible();
+  await expect(page.getByLabel('Earliest start', { exact: true })).toBeVisible();
   await expect(page.getByRole('dialog').getByRole('status')).toContainText('Saved');
   await page.getByRole('combobox', { name: 'Column', exact: true }).selectOption('in_progress');
   await expect(page.getByRole('dialog').getByRole('status')).toContainText('Saved');

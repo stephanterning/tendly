@@ -8,13 +8,13 @@
 
 ## 1. Design intent
 
-**Things 3 simplicity × Linear precision**, without the visual or operational complexity of ClickUp. Feel calm, deliberate, polished and fast. Every frequent action should be easy to discover; sophisticated planning controls should appear only when opened. Do not add dashboard counters, decorative charts or enterprise navigation by default.
+**Things 3 simplicity × Linear precision**, without the visual or operational complexity of ClickUp. Feel calm, deliberate, polished and fast. Every frequent action should be easy to discover; planning controls should be grouped under clear headings in task details. Do not add dashboard counters, decorative charts or enterprise navigation by default.
 
 Design for a household member opening a phone to see **what can I do now**, check something off, add a comment/photo or quickly capture a task. Desktop should excel at longer writing, large boards, filter construction and settings. **No important feature is desktop-only.**
 
 ### Interaction principles
 
-- **Progressive disclosure:** Title-first capture; secondary metadata tucked into details; advanced configuration behind predictable controls.
+- **Progressive disclosure:** Title-first capture; task details expose metadata in visible, labeled groups; explicit pickers open only when needed.
 - **Recognizable context:** Epic color/icon remains visible on mixed, ungrouped cards.
 - **Density hierarchy:** Prominent titles; effort **XS–XL** next; date/assignee/progress as unobtrusive metadata; exact duration secondary.
 - **Direct manipulation:** Tap to open, tap/keyboard to complete, drag where helpful, always offer an accessible equivalent.
@@ -114,7 +114,7 @@ Use nested groups and typed controls for AND/OR/NOT, field choice, operator and 
 
 ### Details layout
 
-**Desktop:** right-side panel, board/list remains in context. **Mobile:** full-screen task details with an obvious Back action. Edit values in place; keep advanced values collapsed or categorized without hiding essential state.
+**Desktop:** right-side panel, board/list remains in context. **Mobile:** full-screen task details with an obvious Back action. Edit values in place; categorize advanced values under visible icon headings without hiding fields behind disclosure arrows.
 
 Suggested information flow: **title and completion / column / epic / priority checkbox / effort size**, then assignees, optional dates, place/resource/tag chips and dependencies, then rich description, nested subtasks, attachments and a bottom area with **Comments** and **Activity** as separate tabs. Present inherited values as inherited, offer per-property override controls, and distinguish intentionally excluded inherited multi-values. Users should be able to return to inheriting.
 
@@ -232,3 +232,14 @@ chrome deliberately uses the compact density variant while retaining the same sc
 Loading, empty, error and reauthentication states use the same content boundaries as
 successful states. Review both Swedish and English, light/dark and desktop/mobile;
 functional tests alone do not verify alignment or visual hierarchy.
+
+### Visible controls and action semantics — 2026-10-15
+
+Owner-approved refinement: task detail groups and settings sections are visible
+with consistent Lucide icon headings, rather than hidden behind disclosure arrows.
+Keep explicit pickers, navigation tabs and contextual action menus. Size uses five
+XS–XL toggle buttons; selecting the active size clears it. High remains one binary
+toggle with an exclamation icon, never additional priority levels. Pair each date
+with its optional time on a compact row and retain household-timezone guidance and
+all inheritance controls. Destructive actions use a trash icon, explicit text and
+accessible red styling in both themes; existing confirmations and Undo still apply.

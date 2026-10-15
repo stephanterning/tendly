@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Mail } from 'lucide-react';
+import { Copy, Mail, Ticket } from 'lucide-react';
 import { api, result } from './api.js';
 
 export function InvitationCodeEntry({ onUse }: { onUse: (code: string) => void }) {
   const { t } = useTranslation();
-  return <details className="code-entry">
-    <summary>{t('haveInvitationCode')}</summary>
+  return <section className="code-entry">
+    <h3 className="icon-label"><Ticket size={18} aria-hidden="true" />{t('haveInvitationCode')}</h3>
     <form onSubmit={(event) => {
       event.preventDefault();
       onUse(String(new FormData(event.currentTarget).get('invitationCode')).trim());
@@ -14,7 +14,7 @@ export function InvitationCodeEntry({ onUse }: { onUse: (code: string) => void }
       <label>{t('invitationCode')}<input name="invitationCode" type="text" autoComplete="one-time-code" autoCapitalize="none" autoCorrect="off" spellCheck={false} minLength={20} maxLength={128} required /></label>
       <button type="submit">{t('useInvitationCode')}</button>
     </form>
-  </details>;
+  </section>;
 }
 type Run = (action: () => Promise<unknown>, message?: string) => Promise<void>;
 export function InvitePanel({ householdId, run, busy }: { householdId: string; run: Run; busy: boolean }) {
