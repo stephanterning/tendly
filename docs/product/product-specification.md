@@ -197,3 +197,16 @@ Unscheduled future concepts (not commitments): offline modifications and conflic
 ## 15. Product decisions intentionally left to implementation details
 
 Exact text labels, individual component dimensions and accent palette values belong to the UX/UI specification. Internal representation of a nullable explicit override, conflict-resolution protocol, migrations and query planning belong to Technical Architecture, subject to all behavioral rules above. If a behavior is not defined in these specifications and would alter what users experience, the implementing agent must ask rather than silently invent a feature.
+
+### Owner addition — automatic planning progression (2026-10-15)
+
+Active tasks with an effective earliest-start date automatically move forward through
+Someday → Within a Year → Within a Month → To Do. Horizons are inclusive calendar
+years/months in the household timezone, clamping missing dates to the last valid day.
+The To Do transition occurs when the effective start date/time is reached (local
+midnight for date-only starts). Inherited starts use the same rule. The maintenance
+worker checks every minute, including catch-up after downtime. It never moves a task
+backward or changes In Progress, Done, archived or trashed tasks. Missing starts do
+not trigger a move. Dependency blockers continue to govern availability independently
+of the planning column. Automatic changes record activity and advance the column
+revision so stale edits and Undo cannot silently overwrite them.

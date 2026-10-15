@@ -270,7 +270,8 @@ it('materializes recurrence once, preserves instance edits and safely restores/d
   await templates.save(actor, householdA, { ...template, name: 'Updated series', nodes: template.nodes.map(n => ({ ...n, value: { ...n.value, title: n.value.title + ' future' } })) }, template.id, template.version);
   expect((await planning.get(db, householdA, instance.id, 'Europe/Stockholm')).title).toBe('Winterize');
   await expect(templates.createInstance(actorB, householdB, template.id, '2030-10-01')).rejects.toThrow('template_not_found');
-  const completed = await planning.patch(actor, householdA, root.id, root.version, { column: 'done' }, false, true);
+  const currentRoot = await planning.get(db, householdA, root.id, 'Europe/Stockholm');
+  const completed = await planning.patch(actor, householdA, root.id, currentRoot.version, { column: 'done' }, false, true);
   await db.update(schema.tasks).set({ completedAt: new Date('2020-01-01') }).where(eq(schema.tasks.id, root.id));
   await maintainHousehold(db, householdA, new Date('2030-09-17T12:00Z'));
   expect((await db.select().from(schema.tasks).where(eq(schema.tasks.id, root.id)))[0]!.archivedAt).toBeNull();
@@ -324,4 +325,30 @@ it('keeps rich content and downloads household-scoped, protects comment authors 
   expect(copy.description).toBe(imageDescription);
   expect((await content.download(actor, householdA, file.id)).bytes.length).toBeGreaterThan(0);
 
+});
+
+it('automatically promotes effective starts once, preserving blockers, revisions and household isolation', async () => {
+  const { maintainHousehold } = await import('../lifecycle/worker.js');
+  const { eq } = await import('drizzle-orm');
+  const actor = (await service.findSession(sessionA))!, otherActor = (await service.findSession(sessionB))!;
+  const parent = await planning.create(actor, householdA, { title: 'Scheduled parent', startDate: '2032-10-16' });
+  const blocker = await planning.create(actor, householdA, { title: 'Still unfinished' });
+  const child = await planning.create(actor, householdA, { title: 'Inherited schedule', parentId: parent.id, blockers: [blocker.id] });
+  const archived = await planning.create(actor, householdA, { title: 'Archived schedule', startDate: '2032-10-16' });
+  await db.update(schema.tasks).set({ archivedAt: new Date() }).where(eq(schema.tasks.id, archived.id));
+  const other = await planning.create(otherActor, householdB, { title: 'Other household schedule', startDate: '2032-10-16' });
+  const get = (id: string) => planning.get(db, householdA, id, 'Europe/Stockholm');
+  await maintainHousehold(db, householdA, new Date('2031-10-16T10:00Z'));
+  expect((await get(child.id)).column).toBe('within_year');
+  await maintainHousehold(db, householdA, new Date('2032-09-16T10:00Z'));
+  expect((await get(child.id)).column).toBe('within_month');
+  await Promise.all([maintainHousehold(db, householdA, new Date('2032-10-15T22:00Z')), maintainHousehold(db, householdA, new Date('2032-10-15T22:00Z'))]);
+  const promoted = await get(child.id);
+  expect(promoted.column).toBe('todo');
+  expect(promoted.available).toBe(false);
+  expect(promoted.blockers).toContain(blocker.id);
+  expect(promoted.version).toBe(child.version + 3);
+  expect((await get(archived.id)).column).toBe('someday');
+  expect((await planning.get(db, householdB, other.id, 'UTC')).column).toBe('someday');
+  await expect(planning.patch(actor, householdA, child.id, child.version, { column: 'someday' })).rejects.toThrow('task_conflict');
 });

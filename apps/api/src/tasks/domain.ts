@@ -29,3 +29,15 @@ export function availability(task: Pick<TaskFields, 'startDate' | 'startTime' | 
       : dateInstant(task.deadlineDate, null, timezone, true) <= now),
   };
 }
+
+export function promotedColumn(task: Pick<TaskFields, 'column' | 'startDate' | 'startTime'>, timezone: string, now = Date.now()): TaskColumn {
+  const future: TaskColumn[] = ['someday', 'within_year', 'within_month', 'todo'];
+  const current = future.indexOf(task.column);
+  if (!task.startDate || current < 0 || current === 3) return task.column;
+  const today = Temporal.Instant.fromEpochMilliseconds(now).toZonedDateTimeISO(timezone).toPlainDate();
+  // Calendar horizons clamp month ends, while the actual start respects an optional local time.
+  const target = dateInstant(task.startDate, task.startTime, timezone) <= now ? 3
+    : task.startDate <= today.add({ months: 1 }).toString() ? 2
+      : task.startDate <= today.add({ years: 1 }).toString() ? 1 : 0;
+  return future[Math.max(current, target)]!;
+}
