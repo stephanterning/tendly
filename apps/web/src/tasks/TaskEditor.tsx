@@ -89,7 +89,6 @@ export function TaskEditor({ task, entities, members, timezone, onSave, onRefres
     <ContentPanel householdId={householdId} taskId={base.id} actorId={actorId} members={members} />
     </div>
     <aside id="task-planning" className="task-detail-properties" aria-label={t('planningPanel')}>
-      <h3>{t('planningPanel')}</h3>
       <fieldset disabled={pending}><TaskFields section="properties" disabled={pending} inheritance={base} value={draft} onChange={changes => { setDraft({ ...draft, ...changes }); setFailure(null); }} entities={entities} members={members} timezone={timezone} /></fieldset>
     <TaskActions timezone={timezone} onSeries={onSeries} onLifecycle={onLifecycle} task={base} householdId={householdId} flush={async () => await save() ? latest.current : null} onClose={onClose} />
     </aside>
