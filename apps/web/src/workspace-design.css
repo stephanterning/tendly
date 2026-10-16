@@ -3,9 +3,14 @@
   --canvas: #f0eee7;
   --surface: #fff;
   --panel: #fafaf6;
-  --ink: #263c32;
-  --muted: #647167;
-  --line: #dce1d8;
+  --ink: #171917;
+  --muted: #505650;
+  --line: #c5cbc3;
+  --control-line: #7a8278;
+  --placeholder-opacity: 1;
+  --disabled-opacity: 1;
+  --disabled-fill: #e3e6e0;
+  --disabled-ink: #555d53;
   --accent: #345c47;
   --accent-ink: #fff;
   --tint: #e5eedb;
@@ -16,6 +21,8 @@
   color: var(--ink); background: var(--canvas);
   --canvas: #202824; --surface: #323d36; --panel: #29312d;
   --ink: #edf1e9; --muted: #b0bcb2; --line: #465249;
+    --control-line: var(--line); --placeholder-opacity: .85;
+    --disabled-opacity: .55; --disabled-fill: var(--surface); --disabled-ink: var(--ink);
   --accent: #b7d4aa; --accent-ink: #203326; --tint: #344c38;
 }
 @media (prefers-color-scheme: dark) {
@@ -23,6 +30,8 @@
     color: var(--ink); background: var(--canvas);
     --canvas: #202824; --surface: #323d36; --panel: #29312d;
     --ink: #edf1e9; --muted: #b0bcb2; --line: #465249;
+    --control-line: var(--line); --placeholder-opacity: .85;
+    --disabled-opacity: .55; --disabled-fill: var(--surface); --disabled-ink: var(--ink);
     --accent: #b7d4aa; --accent-ink: #203326; --tint: #344c38;
   }
 }
@@ -158,3 +167,12 @@ button.primary,.quick-filter-bar button[aria-pressed=true],.rich-toolbar button[
   .mobile-planning-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); margin: -12px 0 12px; font-size: .85rem; text-decoration: underline; text-underline-offset: 3px; }
   .task-detail-properties { scroll-margin-top: 72px; }
 }
+
+/* Input boundaries carry interaction contrast independently of quiet dividers. */
+input,select,textarea,button:where(:not(.quiet):not(.text-button):not(.primary):not([aria-pressed=true]):not([aria-selected=true])),.upload-button { border-color: var(--control-line); }
+input::placeholder,textarea::placeholder { color: var(--muted); opacity: var(--placeholder-opacity); }
+input::-webkit-datetime-edit { color: var(--ink); -webkit-text-fill-color: var(--ink); opacity: 1; }
+input[data-empty=true]::-webkit-datetime-edit { -webkit-text-fill-color: var(--muted); }
+input:disabled::-webkit-datetime-edit { color: var(--disabled-ink); -webkit-text-fill-color: var(--disabled-ink); }
+button:disabled { opacity: var(--disabled-opacity); background: var(--disabled-fill); color: var(--disabled-ink); cursor: not-allowed; }
+.task-detail-sheet>.dialog-heading h2,.task-detail-properties>h3,.task-detail-properties label,.task-detail-content .field-label { color: var(--ink); }
