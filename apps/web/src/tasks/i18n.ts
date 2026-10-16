@@ -1,4 +1,7 @@
 export const taskCopy: Record<string, [string, string]> = {
+  choose_places: ['Choose places', 'Välj platser'], choose_resources: ['Choose resources', 'Välj resurser'], choose_tags: ['Choose tags', 'Välj taggar'],
+  searchEntities: ['Search by name', 'Sök efter namn'], removeEntity: ['Remove {{name}}', 'Ta bort {{name}}'],
+  noMatchingEntities: ['No matches.', 'Inga träffar.'], noEntities: ['No items yet. Add them in Organize your home.', 'Inga alternativ ännu. Lägg till dem under Organisera hemmet.'],
   chooseAssignees: ['Choose members', 'Välj personer'], searchMembers: ['Search members', 'Sök personer'],
   selectedMembers: ['Assigned to this task', 'Tilldelade till uppgiften'], otherMembers: ['Other household members', 'Övriga i hushållet'],
   editAssignee: ['Edit assignment · {{name}}', 'Ändra tilldelning · {{name}}'],
