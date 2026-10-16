@@ -1,4 +1,9 @@
 export const taskCopy: Record<string, [string, string]> = {
+  chooseAssignees: ['Choose members', 'Välj personer'], searchMembers: ['Search members', 'Sök personer'],
+  selectedMembers: ['Assigned to this task', 'Tilldelade till uppgiften'], otherMembers: ['Other household members', 'Övriga i hushållet'],
+  editAssignee: ['Edit assignment · {{name}}', 'Ändra tilldelning · {{name}}'],
+  addAssignee: ['Assign {{name}}', 'Tilldela {{name}}'], removeAssignee: ['Unassign {{name}}', 'Ta bort tilldelning för {{name}}'],
+  noMatchingMembers: ['No matching members.', 'Inga personer matchar.'], noSelectedMembers: ['No one assigned.', 'Ingen tilldelad.'], allMembersSelected: ['Everyone is assigned.', 'Alla är tilldelade.'],
   file_in_use: ["This image is used in a description, comment or template. Remove it from that text before deleting the file.", "Bilden används i en beskrivning, kommentar eller mall. Ta bort den från texten innan filen raderas."],
 
   noFilterMatches: ["No tasks match these filters. Clear the active filters to broaden the results.", "Inga uppgifter matchar filtren. Rensa de aktiva filtren för fler resultat."],
