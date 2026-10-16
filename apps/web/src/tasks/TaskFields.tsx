@@ -1,4 +1,4 @@
-import { AlignLeft, CalendarDays, CircleAlert, Clock3, MapPin, Ruler, SlidersHorizontal, Tags, UsersRound, Wrench } from 'lucide-react';
+import { AlignLeft, CalendarDays, CircleAlert, MapPin, Ruler, SlidersHorizontal, Tags, UsersRound, Wrench } from 'lucide-react';
 import { Section } from '../components/Section.js';
 import { lazy, Suspense } from 'react';
 const RichEditor = lazy(() => import('../content/RichEditor.js'));
@@ -53,7 +53,6 @@ export function TaskFields({ value: local, onChange: update, entities, members, 
       <p className="small muted date-hint">{t('dateZone', { zone: timezone })}</p>
     </Section>}
     <Section title={t('planningDetails')} icon={SlidersHorizontal}>
-      <label><span className="icon-label"><Clock3 size={16} aria-hidden="true" />{t('estimate')}</span><input type="number" min={1} max={525600} value={value.estimateMinutes ?? ''} onChange={e => onChange({ estimateMinutes: e.target.value ? Number(e.target.value) : null })} /></label><p className="small muted">{t('estimateHelp')}</p>
       {(['places', 'resources', 'tags'] as const).map((field, index) => {
         const exclusion = (['placeExclusions', 'resourceExclusions', 'tagExclusions'] as const)[index]!;
         const Icon = [MapPin, Wrench, Tags][index]!;

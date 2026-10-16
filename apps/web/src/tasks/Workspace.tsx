@@ -215,7 +215,6 @@ function TaskCard({ task, entities, members, open, complete, properties }: { tas
       {epic && <span className="card-icon"><EntityIcon name={epic.icon} size={26} /></span>}
       <span className="card-content">{epic && <span className="card-epic">{epic.name}</span>}<strong>{task.title}</strong><span className="card-metadata">
         {properties?.includes('size') && task.size && <span className="size-chip">{task.size}</span>}
-        {properties?.includes('estimate') && task.estimateMinutes !== null && <small>{task.estimateMinutes} min</small>}
         {properties?.includes('progress') && task.progress.total > 0 && <span aria-label={t('subtaskProgress', task.progress)}><ListChecks size={13} />{task.progress.done}/{task.progress.total}</span>}
         {task.parentId && <span title={task.ancestors.map(a => a.title).join(' › ')}>↳ {task.ancestors.at(-1)?.title}</span>}
         {properties?.includes('priority') && task.high && <span title={t('high')}><CircleAlert size={13} aria-label={t('high')} /></span>}
