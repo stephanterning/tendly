@@ -243,3 +243,11 @@ toggle with an exclamation icon, never additional priority levels. Pair each dat
 with its optional time on a compact row and retain household-timezone guidance and
 all inheritance controls. Destructive actions use a trash icon, explicit text and
 accessible red styling in both themes; existing confirmations and Undo still apply.
+
+### Light-theme contrast — 2026-10-16
+
+Use near-black neutral primary text and labels on light surfaces. Secondary copy
+remains darker neutral gray with full-opacity placeholders. Separate interactive
+control borders from quiet section dividers; keep green for accent/selected states.
+Disabled actions use a neutral fill and readable text rather than fading the entire
+button. Preserve epic colors and the dark-theme palette.
