@@ -259,3 +259,20 @@ template editing. Cards and view metadata choices show size only; new filter rul
 cannot select exact minutes. Keep API/model values, existing saved filter semantics,
 activity history and previously saved view definitions intact. Existing minute-based
 filter rules remain readable so opening/saving a filter never silently changes it.
+
+### Avatar assignment — 2026-10-16
+
+Task forms show assigned members as circular photos (initials fallback), followed
+by a + button, without a visible assignment heading or inline checkbox list.
+Clicking + or an avatar opens a searchable, keyboard-accessible popover with
+assigned and other household members. Add/remove immediately uses the existing
+autosave and scalar assignment override path; returning to inheritance remains
+available. Multiple assignees and an empty selection retain their existing meaning.
+
+### Task property tiles — 2026-10-16
+
+Remove the visible Planning heading. Group column, epic, size and High on one
+subtle bordered tile; column, epic and size keep accessible names without visible
+headings. Give assignees, dates, places, resources and tags separate tiles. Collection
+choices wrap compactly with no extra row margins (32px desktop rows, 44px on touch
+and mobile). Preserve item-level inheritance controls and the avatar assignment picker.
