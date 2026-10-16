@@ -1,4 +1,7 @@
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
+import { webkitEditorJourney } from './webkit-journey.js';
+import { vpJourney } from './vp-journey.js';
+import { test, expect, type BrowserContext, type Page, type WebSocket } from '@playwright/test';
+import { hierarchyJourney } from './hierarchy-journey.js';
 import { taskJourney } from './tasks-journey.js';
 import { execFileSync } from 'node:child_process';
 
@@ -35,6 +38,9 @@ async function mailLink(recipient: string, purpose: string) {
 }
 
 test('install, plan tasks, invite and recover with real WebAuthn verification', async ({ page, context, browser }) => {
+  test.setTimeout(150_000);
+  let householdSocket: WebSocket | undefined;
+  page.on('websocket', socket => { if (socket.url().endsWith('/events')) householdSocket = socket; });
   await authenticator(context, page);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Make yourself at home' })).toBeVisible();
@@ -46,13 +52,26 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await page.getByLabel('Household timezone').fill('Europe/Stockholm');
   await page.getByRole('button', { name: 'Create account with a passkey' }).click();
   await taskJourney(page);
+  await hierarchyJourney(page);
+  await vpJourney(page);
+  // This accelerated journey performs a household's planning session in seconds.
+  // Let the real per-user minute bucket reset before the separate account journey;
+  // keep production throttling enabled rather than adding a test-only bypass.
+  const idleSocket = householdSocket;
+  await new Promise(resolve => setTimeout(resolve, 61_000));
+  // Heartbeats must keep the same idle socket alive beyond the proxy's 60-second timeout.
+  expect(idleSocket?.isClosed()).toBe(false);
+  await webkitEditorJourney(context, origin);
   await settings(page);
   await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
+  // Nested settings must share the workspace edge instead of centering a second frame.
+  const edges = await page.evaluate(() => ['.workspace-utilities', '.settings-heading', '.settings-layout', '.settings-footer'].map(selector => Math.round(document.querySelector(selector)!.getBoundingClientRect().left)));
+  expect(new Set(edges).size).toBe(1);
   const offlineContext = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US', permissions: ['clipboard-read', 'clipboard-write'] });
   const offline = await offlineContext.newPage();
   await authenticator(offlineContext, offline);
   await offline.goto(origin);
-  await offline.getByText('Have an invitation code?', { exact: true }).click();
+  await expect(offline.getByRole('heading', { name: 'Have an invitation code?', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Household', exact: true }).click();
   await page.getByLabel('Email address', { exact: true }).fill('offline@example.test');
   await page.getByRole('button', { name: 'Create invitation code' }).click();
@@ -77,17 +96,17 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await page.getByLabel('Port', { exact: true }).fill('1025');
   await page.getByLabel('Sender email address').fill('tendly@example.test');
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByRole('status')).toContainText('Changes saved');
+  await expect(page.getByRole('status').filter({ hasText: 'Changes saved' })).toBeVisible();
   await page.getByRole('button', { name: 'Your account', exact: true }).click();
   await page.getByRole('button', { name: 'Send verification email' }).click();
-  await expect(page.getByRole('status')).toContainText('Email sent');
+  await expect(page.getByRole('status').filter({ hasText: 'Email sent' })).toBeVisible();
   await page.goto(await mailLink('owner@example.test', 'verify_email'));
   await page.getByRole('button', { name: 'Verify email address', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Send verification email' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Household', exact: true }).click();
   await page.getByLabel('Email address', { exact: true }).fill('member@example.test');
   await page.getByRole('button', { name: 'Send invitation' }).click();
-  await expect(page.getByRole('status')).toContainText('Email sent');
+  await expect(page.getByRole('status').filter({ hasText: 'Email sent' })).toBeVisible();
   const invitation = await mailLink('member@example.test', 'invite');
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US' });
   const member = await mobile.newPage();
@@ -112,7 +131,7 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await recovered.getByRole('button', { name: 'Lost access to your passkeys?' }).click();
   await recovered.getByLabel('Email address').fill('member@example.test');
   await recovered.getByRole('button', { name: 'Send recovery link' }).click();
-  await expect(recovered.getByRole('status')).toContainText('If a verified account');
+  await expect(recovered.getByRole('status').filter({ hasText: 'If a verified account' })).toBeVisible();
   await recovered.goto(await mailLink('member@example.test', 'recovery'));
   await recovered.getByRole('button', { name: 'Create a new passkey', exact: true }).click();
   await settings(recovered);
@@ -126,7 +145,7 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await page.getByRole('button', { name: 'Email settings', exact: true }).click();
   await page.getByLabel('SMTP server').fill('unavailable.invalid');
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByRole('status')).toContainText('Changes saved');
+  await expect(page.getByRole('status').filter({ hasText: 'Changes saved' })).toBeVisible();
   await recovered.goto(cli('recover', 'owner@example.test'));
   await recovered.getByRole('button', { name: 'Create a new passkey', exact: true }).click();
   await settings(recovered);

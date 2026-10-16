@@ -39,7 +39,7 @@ export async function accountView(db: QueryDatabase, actor: Actor) {
     .from(memberships).innerJoin(households, eq(households.id, memberships.householdId))
     .where(eq(memberships.userId, actor.user.id));
   return {
-    id: actor.user.id, name: actor.user.name, email: actor.user.email,
+    id: actor.user.id, avatar: actor.user.avatar ? '/api/v1/avatars/' + actor.user.avatar : null, name: actor.user.name, email: actor.user.email,
     emailVerified: !!actor.user.emailVerifiedAt, deploymentAdmin: actor.user.deploymentAdmin,
     language: actor.user.language as 'en' | 'sv', theme: actor.user.theme as 'system' | 'light' | 'dark', households: rows,
   };

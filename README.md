@@ -4,15 +4,17 @@ A self-hosted household task manager: simple daily use, powerful planning when n
 English/Swedish, mobile and desktop, and portable Docker deployment. Licensed under
 [AGPL-3.0-or-later](LICENSE).
 
-**Development status:** Stage 3 task capture and planning foundation. This is not yet the Milestone 1 Viable
-Product. Accounts, shared entities, task capture, six columns and guarded autosave are implemented; hierarchy, filters and the remaining workflows follow in the approved stages. M1 retains the complete approved
-scope; automatic GPS and notifications follow in M2, and integrated cloud backup in M4.
+**VP 1.0.0:** household planning with shared views and filters, unlimited subtasks,
+recurrence/templates, rich comments, photos/files, archive/Trash and manual recovery.
+See the [VP acceptance record](docs/implementation/vp-acceptance.md) for verification.
+Automatic GPS and notifications remain v1.1; integrated cloud backup remains v1.3.
 
 ## Start here
 
 - [Developer setup](docs/development.md)
 - [Deployment and operations](docs/operations.md)
 - [Approved delivery stages and acceptance mapping](docs/implementation/delivery-stages.md)
+- [VP acceptance record](docs/implementation/vp-acceptance.md)
 - [Stage 3 review](docs/implementation/stage-3-review.md)
 - [Stage 2 review](docs/implementation/stage-2-review.md)
 - [Stage 1 review](docs/implementation/stage-1-review.md)

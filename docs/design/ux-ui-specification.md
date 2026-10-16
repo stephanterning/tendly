@@ -8,13 +8,13 @@
 
 ## 1. Design intent
 
-**Things 3 simplicity × Linear precision**, without the visual or operational complexity of ClickUp. Feel calm, deliberate, polished and fast. Every frequent action should be easy to discover; sophisticated planning controls should appear only when opened. Do not add dashboard counters, decorative charts or enterprise navigation by default.
+**Things 3 simplicity × Linear precision**, without the visual or operational complexity of ClickUp. Feel calm, deliberate, polished and fast. Every frequent action should be easy to discover; planning controls should be grouped under clear headings in task details. Do not add dashboard counters, decorative charts or enterprise navigation by default.
 
 Design for a household member opening a phone to see **what can I do now**, check something off, add a comment/photo or quickly capture a task. Desktop should excel at longer writing, large boards, filter construction and settings. **No important feature is desktop-only.**
 
 ### Interaction principles
 
-- **Progressive disclosure:** Title-first capture; secondary metadata tucked into details; advanced configuration behind predictable controls.
+- **Progressive disclosure:** Title-first capture; task details expose metadata in visible, labeled groups; explicit pickers open only when needed.
 - **Recognizable context:** Epic color/icon remains visible on mixed, ungrouped cards.
 - **Density hierarchy:** Prominent titles; effort **XS–XL** next; date/assignee/progress as unobtrusive metadata; exact duration secondary.
 - **Direct manipulation:** Tap to open, tap/keyboard to complete, drag where helpful, always offer an accessible equivalent.
@@ -114,7 +114,7 @@ Use nested groups and typed controls for AND/OR/NOT, field choice, operator and 
 
 ### Details layout
 
-**Desktop:** right-side panel, board/list remains in context. **Mobile:** full-screen task details with an obvious Back action. Edit values in place; keep advanced values collapsed or categorized without hiding essential state.
+**Desktop:** right-side panel, board/list remains in context. **Mobile:** full-screen task details with an obvious Back action. Edit values in place; categorize advanced values under visible icon headings without hiding fields behind disclosure arrows.
 
 Suggested information flow: **title and completion / column / epic / priority checkbox / effort size**, then assignees, optional dates, place/resource/tag chips and dependencies, then rich description, nested subtasks, attachments and a bottom area with **Comments** and **Activity** as separate tabs. Present inherited values as inherited, offer per-property override controls, and distinguish intentionally excluded inherited multi-values. Users should be able to return to inheriting.
 
@@ -182,3 +182,107 @@ page. Include open and covered utility trailers, with English and Swedish search
 terms (`trailer`, `släp`); keep the coherent monochrome outline style. Browse results
 in manageable batches and show the result count. English icon names remain searchable
 in either UI language; common household terms have Swedish aliases.
+
+### Owner review clarification — drag previews (2026-10-15)
+
+In manually ordered views, dragging shows a card-sized insertion placeholder and
+moves surrounding cards aside. Hovering over a card's middle for a short dwell
+(650 ms) changes the preview to a highlighted subtask target. Moving away cancels
+that intent; dropping applies the previewed action. Use visual feedback rather
+than explanatory drop-zone text. Existing consequential-action confirmation and
+menu alternatives remain available. Automatically sorted views retain their sort
+order and do not offer a misleading manual insertion slot.
+
+### Owner-approved workspace redesign — 2026-10-15
+
+Use the approved compact preview's warm neutral light/dark surfaces, muted green
+chrome and subtle dotted workspace background. Epic colors remain the authoritative
+card identity. Keep a thin desktop toolbar for view/household context, saved quick
+filters, current place, favorite, search and creation; no slogan or large headline
+region. Overflowing chips scroll, and narrow screens may wrap controls without
+removing any capability. The collapsible sidebar starts in its compact state.
+
+Board column surfaces follow their contents instead of stretching to equal heights.
+Cards have consistent padding, content-dependent height, compact epic identity and
+XS–XL before secondary metadata. Completion and the accessible move menu stay inside
+the card footprint. Preserve insertion previews, dwell-to-reparent and mobile
+single-column navigation.
+
+Desktop task details use a wide right-side sheet with rich description, subtasks,
+attachments, comments and activity in the main area and the existing planning fields
+and lifecycle actions in a slim right column. Mobile stacks those areas and provides
+a direct jump to planning. Keep all inheritance, dependency, recurrence, conflict,
+confirmation and autosave behavior. The title grows with its text; formatting uses
+compact labeled icon buttons. Preview-only illustration and sample tasks are not
+production data.
+
+### Shared layout foundation — 2026-10-15
+
+All workspace pages use one left-aligned frame with a 24px desktop gutter (16px on
+mobile) and a 1120px content limit for settings/libraries. Boards remain full-width.
+Never center another page frame inside this one. Back and Search share one utility
+row; headings, content and footers follow the same frame edges. Settings use a 224px
+navigation column, 32px gutter and flexible content column; mobile turns this into
+a horizontal navigation row above the content. Navigation labels are left-aligned.
+
+Use the shared spacing tokens (4/8/12/16/24/32px): 8px label-to-control/action gaps,
+16px field spacing, 24px section spacing/panel padding, 16px panel padding on mobile.
+Two-column forms stack on mobile; icons do not shrink to accommodate labels. Task
+chrome deliberately uses the compact density variant while retaining the same scale.
+Loading, empty, error and reauthentication states use the same content boundaries as
+successful states. Review both Swedish and English, light/dark and desktop/mobile;
+functional tests alone do not verify alignment or visual hierarchy.
+
+### Visible controls and action semantics — 2026-10-15
+
+Owner-approved refinement: task detail groups and settings sections are visible
+with consistent Lucide icon headings, rather than hidden behind disclosure arrows.
+Keep explicit pickers, navigation tabs and contextual action menus. Size uses five
+XS–XL toggle buttons; selecting the active size clears it. High remains one binary
+toggle with an exclamation icon, never additional priority levels. Pair each date
+with its optional time on a compact row and retain household-timezone guidance and
+all inheritance controls. Destructive actions use a trash icon, explicit text and
+accessible red styling in both themes; existing confirmations and Undo still apply.
+
+### Light-theme contrast — 2026-10-16
+
+Use near-black neutral primary text and labels on light surfaces. Secondary copy
+remains darker neutral gray with full-opacity placeholders. Separate interactive
+control borders from quiet section dividers; keep green for accent/selected states.
+Disabled actions use a neutral fill and readable text rather than fading the entire
+button. Preserve epic colors and the dark-theme palette.
+
+### Exact estimate hidden — 2026-10-16
+
+Owner request: temporarily remove exact-minute entry from task creation, details and
+template editing. Cards and view metadata choices show size only; new filter rules
+cannot select exact minutes. Keep API/model values, existing saved filter semantics,
+activity history and previously saved view definitions intact. Existing minute-based
+filter rules remain readable so opening/saving a filter never silently changes it.
+
+### Avatar assignment — 2026-10-16
+
+Task forms show assigned members as circular photos (initials fallback), followed
+by a + button, without a visible assignment heading or inline checkbox list.
+Clicking + or an avatar opens a searchable, keyboard-accessible popover with
+assigned and other household members. Add/remove immediately uses the existing
+autosave and scalar assignment override path; returning to inheritance remains
+available. Multiple assignees and an empty selection retain their existing meaning.
+
+### Task property tiles — 2026-10-16
+
+Remove the visible Planning heading. Group column, epic, size and High on one
+subtle bordered tile; column, epic and size keep accessible names without visible
+headings. Give assignees, dates, places, resources and tags separate tiles. Collection
+choices wrap compactly with no extra row margins (32px desktop rows, 44px on touch
+and mobile). Preserve item-level inheritance controls and the avatar assignment picker.
+
+### Collection chip pickers — 2026-10-16
+
+Places, resources and tags display only effective selected items as compact colored
+chips with their icons and a remove action. A plus opens a searchable picker.
+Inherited chips have a link indicator. Removing an item from a child creates a local
+exclusion; the picker retains the per-item Follow parent / Always include / Exclude
+controls so users can restore inheritance and inspect exclusions. Archived selected
+items remain visible and removable. Empty/search states and keyboard/touch access
+are supported in task creation, details and template editing.

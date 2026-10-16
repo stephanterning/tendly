@@ -58,6 +58,12 @@ it('denies cross-household access, foreign websocket subscriptions, and deployme
   await expect(app.injectWS(`/api/v1/households/${householdB}/events`, { headers: headers(sessionA), socket: { remoteAddress: '127.0.0.1' } })).rejects.toThrow();
   const socket = await app.injectWS(`/api/v1/households/${householdA}/events`, { headers: headers(sessionA), socket: { remoteAddress: '127.0.0.1' } });
   socket.close();
+  // Existing sockets must lose access too, not only newly authenticated requests.
+  const temporarySession = await service.session(db, userA);
+  const revoked = await app.injectWS(`/api/v1/households/${householdA}/events`, { headers: headers(temporarySession), socket: { remoteAddress: '127.0.0.1' } });
+  const closed = new Promise<number>(resolve => revoked.once('close', code => resolve(code)));
+  await app.inject({ method: 'POST', url: '/api/v1/auth/logout', headers: headers(temporarySession), payload: {} });
+  expect(await closed).toBe(1008);
   expect((await app.inject({ method: 'POST', url: '/api/v1/auth/logout', headers: { ...headers(sessionA), origin: 'https://attacker.test' }, payload: {} })).statusCode).toBe(403);
 });
 it('issues single-use 30-minute invitation codes without SMTP or email verification', async () => {

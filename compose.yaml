@@ -60,6 +60,8 @@ services:
       target: worker
     environment: *app-env
     init: true
+    volumes:
+      - attachments:/data/attachments
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -81,7 +83,7 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/]
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/api/v1/health/ready]
       interval: 10s
       timeout: 5s
       retries: 6

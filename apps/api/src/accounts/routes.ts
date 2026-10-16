@@ -1,3 +1,4 @@
+import { saveAvatar, readAvatar } from './avatar.js';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import cookie from '@fastify/cookie';
@@ -6,12 +7,12 @@ import websocket from '@fastify/websocket';
 import { z } from 'zod';
 import { and, eq, gt } from 'drizzle-orm';
 import type { RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/server';
-import { emailSchema, errorSchema, nameSchema, okSchema, registrationInput, roleSchema, sessionSchema, smtpSchema, verificationInput } from '@tendly/shared';
+import { emailSchema, errorSchema, timezoneSchema, nameSchema, okSchema, registrationInput, roleSchema, sessionSchema, smtpSchema, verificationInput } from '@tendly/shared';
 import { AccountService } from './service.js';
 import { MailService } from './mail.js';
 import { AccountError } from './errors.js';
 import { accountView, deploymentAdmin, householdAccess, lockAccounts, recent, signedIn } from './access.js';
-import { credentials, memberships, securityEvents, sessions, tokens, users } from './schema.js';
+import { credentials, households, memberships, securityEvents, sessions, tokens, users } from './schema.js';
 import { digest, randomToken } from './crypto.js';
 
 const ok = { ok: true as const };
@@ -20,7 +21,7 @@ const idParam = z.object({ id: z.uuid() });
 const memberParam = z.object({ id: z.uuid(), userId: z.uuid() });
 const linkInput = z.object({ token: z.string().min(20).max(128) });
 
-export async function registerAccountRoutes(server: FastifyInstance, service: AccountService, mail: MailService) {
+export async function registerAccountRoutes(server: FastifyInstance, service: AccountService, mail: MailService, filesPath = '/data/attachments') {
   const app = server.withTypeProvider<ZodTypeProvider>();
   const db = service.db;
   const secure = new URL(service.origin).protocol === 'https:';
@@ -140,6 +141,16 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
     await db.update(users).set(request.body).where(eq(users.id, current.user.id));
     return ok;
   });
+  app.put('/api/v1/account/avatar', { schema: { body: z.object({ image: z.string().max(200000).nullable() }), response: { 200: okSchema } } }, async request => {
+    const current = await actor(request); signedIn(current);
+    await saveAvatar(db, current, filesPath, request.body.image);
+    return ok;
+  });
+  app.get('/api/v1/avatars/:id', { schema: { params: idParam } }, async (request, reply) => {
+    const current = await actor(request); signedIn(current);
+    const bytes = await readAvatar(db, current, filesPath, request.params.id);
+    return reply.header('Cache-Control', 'private, no-store').header('X-Content-Type-Options', 'nosniff').type('image/jpeg').send(bytes);
+  });
   app.get('/api/v1/account/passkeys', { schema: { response: { 200: z.array(z.object({ id: z.string(), name: z.string(), createdAt: z.string() })) } } }, async (request) => {
     const current = await actor(request); signedIn(current);
     const rows = await db.select({ id: credentials.id, name: credentials.name, createdAt: credentials.createdAt }).from(credentials).where(eq(credentials.userId, current.user.id));
@@ -159,10 +170,11 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
     await db.delete(sessions).where(and(eq(sessions.id, request.params.sessionId), eq(sessions.userId, current.user.id)));
     return ok;
   });
-  app.get('/api/v1/households/:id/members', { schema: { params: idParam, response: { 200: z.array(z.object({ id: z.uuid(), name: z.string(), email: z.string(), role: roleSchema })) } } }, async (request) => {
+  app.get('/api/v1/households/:id/members', { schema: { params: idParam, response: { 200: z.array(z.object({ id: z.uuid(), name: z.string(), avatar: z.string().nullable(), email: z.string(), role: roleSchema })) } } }, async (request) => {
     const current = await actor(request);
     await householdAccess(db, current, request.params.id);
-    return db.select({ id: users.id, name: users.name, email: users.email, role: memberships.role }).from(memberships).innerJoin(users, eq(users.id, memberships.userId)).where(eq(memberships.householdId, request.params.id));
+    const rows = await db.select({ id: users.id, avatar: users.avatar, name: users.name, email: users.email, role: memberships.role }).from(memberships).innerJoin(users, eq(users.id, memberships.userId)).where(eq(memberships.householdId, request.params.id));
+    return rows.map(row => ({ ...row, avatar: row.avatar ? '/api/v1/avatars/' + row.avatar : null }));
   });
   app.post('/api/v1/households/:id/invitations', { schema: { params: idParam, body: z.object({ email: emailSchema, role: roleSchema }), response: { 200: okSchema } } }, async (request) => {
     const current = await actor(request); recent(current);
@@ -216,6 +228,17 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
     await mail.send(current.user.email, 'Tendly · Email test', 'Your Tendly email configuration works.');
     return ok;
   });
+  app.put('/api/v1/households/:id', { schema: { params: idParam, body: z.object({ name: nameSchema, timezone: timezoneSchema, previousName: z.string(), previousTimezone: z.string() }), response: { 200: okSchema } } }, async request => {
+    const current = await actor(request);
+    await db.transaction(async tx => {
+      await householdAccess(tx, current, request.params.id, true);
+      const [old] = await tx.select().from(households).where(eq(households.id, request.params.id)).for('update');
+      await householdAccess(tx, current, request.params.id, true);
+      if (!old || old.name !== request.body.previousName || old.timezone !== request.body.previousTimezone) throw new AccountError('planning_conflict', 409);
+      await tx.update(households).set({ name: request.body.name, timezone: request.body.timezone, revision: old.revision + 1 }).where(eq(households.id, old.id));
+    });
+    return ok;
+  });
   // Authorization happens before upgrade and again while the socket is alive.
   // Future broadcasts must recheck membership before sending household content.
   app.get('/api/v1/households/:id/events', {
@@ -225,9 +248,23 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
       await householdAccess(db, await actor(request), request.params.id);
     },
   }, (socket, request) => {
-    const timer = setInterval(() => {
-      void actor(request).then((current) => householdAccess(db, current, request.params.id)).catch(() => socket.close(1008, 'Access revoked'));
-    }, 15_000);
+    let revision = -1, checking = false, lastPing = Date.now();
+    const tick = async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        // A WebSocket outlives its upgrade request: never reuse the request's cached session.
+        const current = await service.findSession(request.cookies[sessionName]);
+        await householdAccess(db, current, request.params.id);
+        // Idle households still need traffic so reverse proxies keep the upgraded connection alive.
+        if (Date.now() - lastPing >= 20_000) { socket.ping(); lastPing = Date.now(); }
+        const [household] = await db.select({ revision: households.revision }).from(households).where(eq(households.id, request.params.id));
+        if (household && household.revision !== revision) { revision = household.revision; socket.send(JSON.stringify({ type: 'changed', revision })); }
+      } catch { socket.close(1008, 'Access revoked'); }
+      finally { checking = false; }
+    };
+    const timer = setInterval(() => { void tick(); }, 2000);
+    void tick();
     socket.on('close', () => clearInterval(timer));
     socket.on('error', () => clearInterval(timer));
   });

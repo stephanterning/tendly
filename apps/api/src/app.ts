@@ -1,14 +1,19 @@
+import { registerSearchRoutes } from './content/search.js';
+import { registerContentRoutes } from './content/routes.js';
+import { registerLifecycleRoutes } from './lifecycle/routes.js';
+import { registerPlanningRoutes } from './planning/routes.js';
 import { registerTaskRoutes } from './tasks/routes.js';
 import { registerAccountRoutes } from './accounts/routes.js';
 import type { AccountService } from './accounts/service.js';
 import type { MailService } from './accounts/mail.js';
 import Fastify, { LogController } from 'fastify';
 import swagger from '@fastify/swagger';
-import { jsonSchemaTransform, serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fastify-type-provider-zod';
+import { jsonSchemaTransform, jsonSchemaTransformObject, serializerCompiler, validatorCompiler, type ZodTypeProvider } from 'fastify-type-provider-zod';
 import { healthSchema, versionSchema } from '@tendly/shared';
 import { logRedaction } from './logging.js';
 
 interface AppOptions {
+  filesPath?: string;
   accounts?: { service: AccountService; mail: MailService };
   checkDatabase: () => Promise<void>;
   closeDatabase?: () => Promise<void>;
@@ -23,6 +28,7 @@ export async function buildApp(options: AppOptions) {
   await app.register(swagger, {
     openapi: { info: { title: 'Tendly API', version: options.version ?? '0.0.0-dev' } },
     transform: jsonSchemaTransform,
+    transformObject: jsonSchemaTransformObject,
   });
   // Do not log URL query strings: later recovery links carry single-use secrets.
   app.addHook('onResponse', async (request, reply) => {
@@ -39,8 +45,12 @@ export async function buildApp(options: AppOptions) {
   });
   app.get('/api/v1/version', { schema: { operationId: 'getVersion', response: { 200: versionSchema } } }, async () => ({ name: 'Tendly' as const, version: options.version ?? '0.0.0-dev' }));
   if (options.accounts) {
-    await registerAccountRoutes(app, options.accounts.service, options.accounts.mail);
+    await registerAccountRoutes(app, options.accounts.service, options.accounts.mail, options.filesPath);
     await registerTaskRoutes(app, options.accounts.service);
+    await registerPlanningRoutes(app, options.accounts.service);
+    await registerLifecycleRoutes(app, options.accounts.service);
+    await registerContentRoutes(app, options.accounts.service, options.filesPath ?? '/data/attachments');
+    await registerSearchRoutes(app, options.accounts.service);
   }
   await app.ready();
   return app;
