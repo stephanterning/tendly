@@ -251,3 +251,11 @@ remains darker neutral gray with full-opacity placeholders. Separate interactive
 control borders from quiet section dividers; keep green for accent/selected states.
 Disabled actions use a neutral fill and readable text rather than fading the entire
 button. Preserve epic colors and the dark-theme palette.
+
+### Exact estimate hidden — 2026-10-16
+
+Owner request: temporarily remove exact-minute entry from task creation, details and
+template editing. Cards and view metadata choices show size only; new filter rules
+cannot select exact minutes. Keep API/model values, existing saved filter semantics,
+activity history and previously saved view definitions intact. Existing minute-based
+filter rules remain readable so opening/saving a filter never silently changes it.
