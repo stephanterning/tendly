@@ -202,3 +202,21 @@ button.danger:hover { background: light-dark(#fff0f1,#4a252b); }
 @media (pointer: coarse), (max-width: 720px) {
   .task-property-tile .task-compact-choices .check-label { min-height: 44px; }
 }
+
+.entity-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.entity-chip, .entity-chip-add { min-height: 32px; padding: 4px 8px; border-radius: 8px; gap: 6px; }
+.entity-chip { max-width: 100%; background: oklch(var(--epic-lightness) var(--epic-chroma) var(--epic-hue)); color: oklch(var(--epic-ink) .02 var(--epic-hue)); border-color: transparent; text-align: left; }
+.entity-chip span { min-width: 0; overflow-wrap: anywhere; }
+.entity-chip svg { flex-shrink: 0; }
+.entity-chip-add { width: 32px; padding: 0; border-style: dashed; }
+.entity-picker-options { display: grid; gap: var(--space-2); margin-top: var(--space-3); }
+.entity-picker-option { min-width: 0; }
+.entity-picker-toggle { width: 100%; justify-content: flex-start; text-align: left; gap: var(--space-2); padding: var(--space-2); }
+.entity-picker-toggle span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.entity-picker-toggle svg { flex-shrink: 0; }
+.entity-picker-toggle[aria-pressed="true"] { background: var(--tint); }
+.entity-picker-option select { width: 100%; margin-top: 4px; }
+@media (pointer: coarse), (max-width: 720px) {
+  .entity-chip, .entity-chip-add { min-height: 44px; }
+  .entity-chip-add { width: 44px; }
+}

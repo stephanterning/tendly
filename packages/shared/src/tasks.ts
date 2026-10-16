@@ -62,3 +62,8 @@ export type TaskChanges = z.infer<typeof taskChangesSchema>;
 export type Entity = z.infer<typeof entitySchema>;
 export type EntityKind = z.infer<typeof entityKindSchema>;
 export type TaskColumn = z.infer<typeof columnSchema>;
+
+/** Merge one collection edge; callers provide the parent's already-resolved values. */
+export function resolveCollection(parent: readonly string[], additions: readonly string[], exclusions: readonly string[]): string[] {
+  return [...new Set([...parent.filter(id => !exclusions.includes(id)), ...additions])].sort();
+}

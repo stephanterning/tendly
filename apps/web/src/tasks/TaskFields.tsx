@@ -1,4 +1,5 @@
 import { AlignLeft, CalendarDays, CircleAlert, MapPin, Tags, Wrench } from 'lucide-react';
+import { EntityChipPicker } from './EntityChipPicker.js';
 import { AssigneePicker } from './AssigneePicker.js';
 import { Section } from '../components/Section.js';
 import { lazy, Suspense } from 'react';
@@ -59,12 +60,10 @@ export function TaskFields({ value: local, onChange: update, entities, members, 
         const exclusion = (['placeExclusions', 'resourceExclusions', 'tagExclusions'] as const)[index]!;
         const Icon = [MapPin, Wrench, Tags][index]!;
         return <Section key={field} title={t(field)} icon={Icon} className="task-property-tile">
-          {local.parentId && <p className="small muted">{t('itemInheritanceHelp')}</p>}
-          <div className={local.parentId ? 'choice-list task-inherited-choices' : 'choice-list task-compact-choices'}>{entities.filter(e => e.kind === ['place', 'resource', 'tag'][index] && (!e.archived || value[field].includes(e.id))).map(entity => local.parentId ? <label key={entity.id}>{entity.name}<select aria-label={entity.name + ' · ' + t(field)} value={local[field].includes(entity.id) ? 'add' : local[exclusion].includes(entity.id) ? 'exclude' : 'inherit'} onChange={e => update({
-            [field]: [...local[field].filter(id => id !== entity.id), ...(e.target.value === 'add' ? [entity.id] : [])].sort(),
-            [exclusion]: [...local[exclusion].filter(id => id !== entity.id), ...(e.target.value === 'exclude' ? [entity.id] : [])].sort(),
-          })}><option value="inherit">{t(inheritance?.inheritedValues[field].includes(entity.id) ? 'inherited' : 'followParent')}</option><option value="add">{t('alwaysInclude')}</option><option value="exclude">{t('excludeItem')}</option></select></label> : <label key={entity.id} className="check-label"><input type="checkbox" checked={value[field].includes(entity.id)} onChange={e => onChange({ [field]: e.target.checked ? [...value[field], entity.id].sort() : value[field].filter(id => id !== entity.id) })} />{entity.name}</label>)}</div>
-          {inheritance && local.parentId && <p className="small">{t('effectiveNow')}: {inheritance[field].map(id => entities.find(e => e.id === id)?.name).filter(Boolean).join(', ') || t('none')}</p>}
+          <EntityChipPicker field={field} entities={entities.filter(e => e.kind === ['place', 'resource', 'tag'][index])}
+            additions={local[field]} exclusions={local[exclusion]} parentValues={local.parentId ? inheritance?.inheritedValues[field] ?? [] : []}
+            hasParent={!!local.parentId} disabled={disabled}
+            onChange={(additions, exclusions) => update({ [field]: additions, [exclusion]: exclusions })} />
         </Section>;
       })}
 

@@ -1,4 +1,4 @@
-import { type TaskFields, type Task } from '@tendly/shared';
+import { resolveCollection, type TaskFields, type Task } from '@tendly/shared';
 import { availability, dateInstant } from './domain.js';
 import { AccountError } from '../accounts/errors.js';
 export type GraphNode = { id: string; local: TaskFields; trashed: boolean };
@@ -34,7 +34,7 @@ export function resolveGraph(nodes: GraphNode[], timezone: string) {
       else if (key === 'high') next.high = parent.high;
       else next.assignees = parent.assignees;
     }
-    for (const key of sets) next[key] = [...new Set([...parent[key].filter(item => !local[exclusions[key]].includes(item)), ...local[key]])].sort();
+    for (const key of sets) next[key] = resolveCollection(parent[key], local[key], local[exclusions[key]]);
     effective.set(id, next);
     blockers.set(id, new Set([...(local.parentId ? blockers.get(local.parentId)! : []), ...local.blockers]));
   }

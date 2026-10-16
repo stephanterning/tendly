@@ -276,3 +276,13 @@ subtle bordered tile; column, epic and size keep accessible names without visibl
 headings. Give assignees, dates, places, resources and tags separate tiles. Collection
 choices wrap compactly with no extra row margins (32px desktop rows, 44px on touch
 and mobile). Preserve item-level inheritance controls and the avatar assignment picker.
+
+### Collection chip pickers — 2026-10-16
+
+Places, resources and tags display only effective selected items as compact colored
+chips with their icons and a remove action. A plus opens a searchable picker.
+Inherited chips have a link indicator. Removing an item from a child creates a local
+exclusion; the picker retains the per-item Follow parent / Always include / Exclude
+controls so users can restore inheritance and inspect exclusions. Archived selected
+items remain visible and removable. Empty/search states and keyboard/touch access
+are supported in task creation, details and template editing.
