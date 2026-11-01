@@ -134,6 +134,20 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await page.getByRole('button', { name: `${run} ready`, exact: true }).click();
   await expect(page.getByRole('link', { name: `${run} large`, exact: true })).toHaveCount(0);
   await expect(page.getByRole('link', { name: `${run} small`, exact: true })).toBeVisible();
+  // A definition dialog must close after approving Forward to a task, even
+  // though its underlying view stays mounted.
+  await page.getByRole('link', { name: `${run} small`, exact: true }).click();
+  await page.getByRole('button', { name: 'Back to tasks', exact: true }).click();
+  await page.locator('.view-secondary>summary').click();
+  await page.getByRole('button', { name: 'View settings', exact: true }).click();
+  await page.getByLabel('View name', { exact: true }).fill('Unsaved view');
+  await page.goForward();
+  await page.getByRole('button', { name: 'Discard changes and leave', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  await expect(page.getByRole('dialog', { name: 'Task details', exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
   await page.reload();
   await page
     .getByRole('navigation', { name: 'Views', exact: true })

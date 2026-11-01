@@ -1,3 +1,4 @@
+import { useDraftGuard } from '../navigation/useDraftGuard.js';
 import { NavigationContext, useWorkspaceNavigation } from '../navigation/Navigation.js';
 import { routeUrl, type WorkspaceView } from '../navigation/routes.js';
 import { useViewCatalog, viewName } from '../views/api.js';
@@ -333,7 +334,10 @@ export function Workspace({
     { key: 'more', icon: MoreHorizontal },
   ] as const;
   function switchHousehold(value: string) {
-    router.navigate({ household: value, view: 'now', custom: '', task: '', q: '', filters: [], comment: '', match: '' });
+    router.navigate({ household: value, view: 'now', custom: '', column: 'todo', task: '', q: '', filters: [], comment: '', match: '' });
+  }
+  useEffect(() => {
+    // History traversal changes households too; never carry actions across scopes.
     setLibrarySelection(null);
     setCapture(null);
     setHistory([]);
@@ -341,8 +345,8 @@ export function Workspace({
     setNotice('');
     setError('');
     setMoveUndo(null);
+  }, [id]);
 
-  }
   return (
     <NavigationContext.Provider value={router}>
     <div className={'workspace ' + (collapsed ? 'nav-collapsed' : '')}>
@@ -777,6 +781,8 @@ function Capture({
   const [expanded, setExpanded] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
+  const initial = useRef(JSON.stringify(value));
+  const guard = useDraftGuard(!contentValid || JSON.stringify(value) !== initial.current, busy, onClose);
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!contentValid) return;
@@ -789,7 +795,7 @@ function Capture({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !busy) onClose();
+        if (!open) guard.request(onClose);
       }}
       title={t('newTask')}
     >
@@ -842,6 +848,7 @@ function Capture({
           </div>
         </fieldset>
       </form>
+      {guard.confirmation}
     </Dialog>
   );
 }
