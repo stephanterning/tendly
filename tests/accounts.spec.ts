@@ -36,7 +36,7 @@ async function mailLink(recipient: string, purpose: string) {
 }
 
 test('install, plan tasks, invite and recover with real WebAuthn verification', async ({ page, context, browser }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(180_000);
   await authenticator(context, page);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Make yourself at home' })).toBeVisible();
@@ -49,10 +49,14 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await page.getByRole('button', { name: 'Create account with a passkey' }).click();
   const planningStarted = Date.now();
   await taskJourney(page);
+  // Each expanded journey drives hundreds of requests at machine speed. Give
+  // each phase its own window without weakening production account limits.
+  await page.waitForTimeout(Math.max(0, 61_000 - (Date.now() - planningStarted)));
+  const contentStarted = Date.now();
   await contentJourney(page,context,browser);
   // The combined journey drives two devices at machine speed. Keep production
   // rate limits intact and let the planning request window expire before accounts.
-  await page.waitForTimeout(Math.max(0, 61_000 - (Date.now() - planningStarted)));
+  await page.waitForTimeout(Math.max(0, 61_000 - (Date.now() - contentStarted)));
   await settings(page);
   await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   const offlineContext = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US', permissions: ['clipboard-read', 'clipboard-write'] });
