@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react';
+import { useDraftGuard } from '../navigation/useDraftGuard.js';
+import { useRef, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
@@ -69,9 +70,9 @@ function Identity({
 export function FilterEditor({
   filter,
   duplicate = false,
-  viewId,
+  viewId, onCreated,
   ...props
-}: Common & { filter: SavedFilter | null; duplicate?: boolean; viewId?: string | undefined }) {
+}: Common & { filter: SavedFilter | null; duplicate?: boolean; viewId?: string | undefined; onCreated?: (filter: SavedFilter) => void }) {
   const { t } = useTranslation(),
     queries = useQueryClient();
   const [base, setBase] = useState(duplicate ? null : filter);
@@ -86,6 +87,9 @@ export function FilterEditor({
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [showHistory, setShowHistory] = useState(false);
+  const initial = useRef(JSON.stringify({ name, icon, color, expression }));
+  const guard = useDraftGuard(JSON.stringify({ name, icon, color, expression }) !== initial.current, busy);
+  const close = () => guard.request(props.onClose);
   const [version, setVersion] = useState('');
   const path = { householdId: props.householdId, id: base?.id ?? '' };
   const history = useQuery({
@@ -97,13 +101,13 @@ export function FilterEditor({
       ),
   });
   const refresh = () => queries.invalidateQueries({ queryKey: ['planning', props.householdId] });
-  const run = async (action: () => Promise<unknown>) => {
+  const run = async (action: () => Promise<unknown>, creating = false) => {
     setBusy(true);
     setError('');
     try {
-      await action();
+      const saved = await action();
       await refresh();
-      props.onClose();
+      if (creating && onCreated) onCreated(saved as SavedFilter); else props.onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'operation_failed');
       await refresh();
@@ -134,6 +138,7 @@ export function FilterEditor({
               body: defined(changes),
             }),
           ),
+      !base,
     );
   }
   const references = props.catalog.views.filter(
@@ -144,7 +149,7 @@ export function FilterEditor({
       open
       title={t(base ? 'editFilter' : 'createFilter')}
       onOpenChange={(open) => {
-        if (!open && !busy) props.onClose();
+        if (!open) close();
       }}
       wide
     >
@@ -203,6 +208,7 @@ export function FilterEditor({
                 <button
                   type="button"
                   onClick={() => {
+                    initial.current = JSON.stringify({ name: latest.name, icon: latest.icon, color: latest.color, expression: parseExpression(latest.expression) });
                     setBase(latest);
                     setName(latest.name);
                     setIcon(latest.icon);
@@ -224,7 +230,7 @@ export function FilterEditor({
             >
               {t('save')}
             </button>
-            <button type="button" onClick={props.onClose}>
+            <button type="button" onClick={close}>
               {t('cancel')}
             </button>
           </div>
@@ -292,6 +298,7 @@ export function FilterEditor({
           )}
         </fieldset>
       </form>
+      {guard.confirmation}
     </Dialog>
   );
 }
@@ -327,6 +334,9 @@ export function ViewEditor({
   );
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
+  const initial = useRef(JSON.stringify(draft));
+  const guard = useDraftGuard(JSON.stringify(draft) !== initial.current, busy);
+  const close = () => guard.request(props.onClose);
   const latest = props.catalog.views.find((v) => v.id === base?.id);
   const path = { householdId: props.householdId, id: base?.id ?? '' };
   const run = async (action: () => Promise<unknown>) => {
@@ -372,7 +382,7 @@ export function ViewEditor({
       open
       title={t(base ? 'editView' : 'createView')}
       onOpenChange={(open) => {
-        if (!open && !busy) props.onClose();
+        if (!open) close();
       }}
       wide
     >
@@ -560,6 +570,7 @@ export function ViewEditor({
                 <button
                   type="button"
                   onClick={() => {
+                    initial.current = JSON.stringify(viewFieldsSchema.parse(latest));
                     setBase(latest);
                     setDraft(viewFieldsSchema.parse(latest));
                     setError('');
@@ -578,7 +589,7 @@ export function ViewEditor({
             >
               {t('save')}
             </button>
-            <button type="button" onClick={props.onClose}>
+            <button type="button" onClick={close}>
               {t('cancel')}
             </button>
             {base?.builtin && (
@@ -602,6 +613,7 @@ export function ViewEditor({
           </div>
         </fieldset>
       </form>
+      {guard.confirmation}
     </Dialog>
   );
 }

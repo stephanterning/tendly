@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { mkdir, rm, stat, readdir } from 'node:fs/promises';
 import { createWriteStream } from 'node:fs';
@@ -39,14 +39,29 @@ export class FileStore {
       if (!record) await rm(path, { force: true });
     }
   }
-  async upload(actor: Actor, householdId: string, taskId: string, part: MultipartFile) {
+  async upload(actor: Actor, householdId: string, taskId: string, part: MultipartFile, uploadId: string = randomUUID()) {
     await this.service.task(actor, householdId, taskId);
+    // The same attempt keeps its ID after a lost response. A database lock also
+    // protects the original bytes from overlapping retries across API processes.
+    return this.service.db.transaction(async tx => {
+      const lock = await tx.execute(sql`select pg_try_advisory_xact_lock(hashtextextended(${uploadId}, 0)) as acquired`);
+      if (!lock.rows[0]?.acquired) { part.file.resume(); throw new AccountError('uploads_busy', 503); }
+      const [existing] = await tx.select().from(attachments).where(eq(attachments.id, uploadId));
+      if (existing) {
+        part.file.resume();
+        if (existing.householdId !== householdId || existing.taskId !== taskId || existing.deleted)
+          throw new AccountError('upload_id_conflict', 409);
+        return { ...existing, createdAt: existing.createdAt.toISOString() };
+      }
+      return this.store(actor, householdId, taskId, part, uploadId);
+    });
+  }
+  private async store(actor: Actor, householdId: string, taskId: string, part: MultipartFile, id: string) {
     if (this.active >= 2) {
       part.file.resume();
       throw new AccountError('uploads_busy', 503);
     }
     this.active++;
-    const id = randomUUID();
     try {
       await mkdir(this.root, { recursive: true });
       await pipeline(part.file, createWriteStream(this.path(id), { flags: 'wx', mode: 0o600 }));

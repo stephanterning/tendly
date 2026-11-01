@@ -9658,7 +9658,9 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    "x-upload-id"?: string;
+                };
                 path: {
                     householdId: string;
                     taskId: string;

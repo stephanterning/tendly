@@ -1,6 +1,7 @@
+import { SearchHighlight, searchHighlightKey } from './searchHighlight.js';
 import { EditorState } from '@tiptap/pm/state';
 import { useEffect, useRef, useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, useEditorState, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
@@ -8,6 +9,12 @@ import Image from '@tiptap/extension-image';
 import Mention from '@tiptap/extension-mention';
 import { documentSchema, toDocument, safeLink, type TaskFields } from '@tendly/shared';
 import { useTranslation } from 'react-i18next';
+import { ImagePlus, Link, ListChecks, ChevronDown, Expand, Bold, Italic } from 'lucide-react';
+import { Dialog } from '../components/ui/dialog.js';
+import { LinkDialog } from './LinkDialog.js';
+import { ImagePlacements, addPlacements, imagePlacements, insertUploadedFile, removePlacement } from './imagePlacement.js';
+import { Uploads, useUploads } from './Uploads.js';
+import type { FileUploader, UploadedFile } from './api.js';
 import type { Member } from '../tasks/TaskFields.js';
 const SafeImage = Image.extend({
   parseHTML() {
@@ -32,16 +39,31 @@ export function RichEditor({
   readOnly = false,
   onUpload,
   onValidityChange,
+  onBusyChange,
+  onPendingChange,
+  insertion,
+  documentMode = false,
+  searchMatch = '',
 }: {
   value: TaskFields['description'];
+  searchMatch?: string;
+  documentMode?: boolean;
   onValidityChange?: (valid: boolean) => void;
+  onBusyChange?: (busy: boolean) => void;
+  onPendingChange?: (pending: boolean) => void;
+  insertion?: { file: UploadedFile } | undefined;
   onChange?: (value: TaskFields['description']) => void;
   label: string;
   members?: Member[];
   readOnly?: boolean;
-  onUpload?: (files: File[]) => Promise<{ src: string; name: string; image: boolean }[]>;
+  onUpload?: FileUploader;
 }) {
   const { t } = useTranslation();
+  const [imagePreview, setImagePreview] = useState<{ src: string; name: string } | null>(null);
+  const uploads = useUploads((...args) => {
+    if (!upload.current) return Promise.reject(new Error('operation_failed'));
+    return upload.current(...args);
+  }, onBusyChange, onPendingChange);
   const validity = useRef(onValidityChange);
   validity.current = onValidityChange;
   const change = useRef(onChange);
@@ -50,8 +72,7 @@ export function RichEditor({
   upload.current = onUpload;
   const memberRef = useRef(members);
   memberRef.current = members;
-  const [link, setLink] = useState(''),
-    [linkOpen, setLinkOpen] = useState(false),
+  const [linkOpen, setLinkOpen] = useState(false),
     [error, setError] = useState('');
   const editor = useEditor({
     extensions: [
@@ -63,7 +84,9 @@ export function RichEditor({
         },
       }),
       TaskList,
-      TaskItem.configure({ nested: true }),
+      ImagePlacements,
+      SearchHighlight,
+      TaskItem.configure({ nested: true, a11y: { checkboxLabel: node => node.firstChild?.textContent || t('emptyChecklistItem') } }),
       SafeImage.configure({ allowBase64: false }),
       Mention.configure({
         HTMLAttributes: { class: 'mention' },
@@ -141,6 +164,23 @@ export function RichEditor({
         'aria-label': label,
         'aria-multiline': 'true',
         'aria-readonly': String(readOnly),
+        'data-placeholder': t('descriptionPrompt'),
+      },
+      handleClick: (view, pos, event) => {
+        const anchor = event.target instanceof Element ? event.target.closest('a') : null;
+        if (readOnly || !anchor || !view.dom.contains(anchor)) return false;
+        event.preventDefault();
+        editor?.chain().setTextSelection(pos).extendMarkRange('link').run();
+        setLinkOpen(true);
+        return true;
+      },
+      handleKeyDown: (_view, event) => {
+        if (!readOnly && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+          event.preventDefault();
+          setLinkOpen(true);
+          return true;
+        }
+        return false;
       },
       handlePaste: (_view, event) => {
         const files = Array.from(event.clipboardData?.files ?? []);
@@ -149,11 +189,12 @@ export function RichEditor({
         void addFiles(files);
         return true;
       },
-      handleDrop: (_view, event) => {
+      handleDrop: (view, event) => {
         const files = Array.from(event.dataTransfer?.files ?? []);
         if (!upload.current || !files.length) return false;
         event.preventDefault();
-        void addFiles(files);
+        const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+        addFiles(files, pos);
         return true;
       },
     },
@@ -168,28 +209,25 @@ export function RichEditor({
       }
     },
   });
-  async function addFiles(files: File[]) {
-    try {
-      for (const file of (await upload.current?.(files)) ?? []) {
-        if (file.image) editor?.chain().focus().setImage({ src: file.src, alt: file.name }).run();
-        else
-          editor
-            ?.chain()
-            .focus()
-            .insertContent([
-              {
-                type: 'text',
-                text: file.name,
-                marks: [{ type: 'link', attrs: { href: file.src } }],
-              },
-              { type: 'text', text: ' ' },
-            ])
-            .run();
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'operation_failed');
-    }
+  useEffect(() => {
+    if (!editor) return;
+    editor.view.dispatch(editor.state.tr.setMeta(searchHighlightKey, searchMatch).setMeta('addToHistory', false));
+    if (!searchMatch || !documentMode) return;
+    const frame = requestAnimationFrame(() => editor.view.dom.querySelector('.search-match')?.scrollIntoView({ block: 'center' }));
+    return () => cancelAnimationFrame(frame);
+  }, [editor, searchMatch, documentMode]);
+  function addFiles(files: File[], position = editor?.state.selection.from) {
+    if (!editor || position === undefined || !files.length || readOnly) return;
+    const anchors = files.map(file => ({ id: crypto.randomUUID(), name: file.name, pos: position }));
+    addPlacements(editor, anchors);
+    files.forEach((file, index) => {
+      const id = anchors[index]!.id;
+      uploads.queue.add(id, file, result => insertUploadedFile(editor, result, id), () => removePlacement(editor, id));
+    });
   }
+  useEffect(() => {
+    if (editor && insertion) insertUploadedFile(editor, insertion.file);
+  }, [editor, insertion]);
   useEffect(() => {
     if (!editor) return;
     const current = documentSchema.safeParse(editor.getJSON());
@@ -199,6 +237,8 @@ export function RichEditor({
       incoming.success &&
       !editor.schema.nodeFromJSON(incoming.data).eq(editor.state.doc)
     ) {
+      setLinkOpen(false);
+      editor.view.dispatch(editor.state.tr.setMeta(imagePlacements, { clear: true }));
       editor.commands.setContent(toDocument(incoming.data), {
         emitUpdate: false,
       });
@@ -212,158 +252,93 @@ export function RichEditor({
           plugins: editor.state.plugins,
         }),
       );
+      editor.view.dispatch(editor.state.tr.setMeta(searchHighlightKey, searchMatch).setMeta('addToHistory', false));
     }
   }, [editor, value]);
-  if (!editor) return null;
-  const action = (name: string, run: () => void, active = false) => (
-    <button type="button" aria-label={t(name)} aria-pressed={active} onClick={run}>
+  const controls = useEditorState({ editor, selector: ({ editor: current }) => current ? {
+    empty: current.isEmpty,
+    bold: current.isActive('bold'), italic: current.isActive('italic'),
+    taskList: current.isActive('taskList'), link: current.isActive('link'), image: current.isActive('image'),
+    heading: current.isActive('heading'), bulletList: current.isActive('bulletList'),
+    orderedList: current.isActive('orderedList'), blockquote: current.isActive('blockquote'),
+    codeBlock: current.isActive('codeBlock'),
+    canUndo: current.can().undo(), canRedo: current.can().redo(),
+  } : null });
+  if (!editor || !controls) return null;
+  const action = (name: string, run: () => void, active?: boolean) => (
+    <button type="button" aria-label={t(name)} aria-pressed={active} onMouseDown={event => event.preventDefault()} onClick={run}>
       {t(name)}
     </button>
   );
   return (
-    <div className={'rich-editor' + (readOnly ? ' read-only' : '')}>
+    <div className={'rich-editor' + (readOnly ? ' read-only' : '') + (documentMode ? ' document-editor' : '')}
+      data-empty={controls.empty}
+      onClick={event => {
+        const image = event.target;
+        if (image instanceof HTMLImageElement && image.closest('.tiptap'))
+          setImagePreview({ src: image.getAttribute('src') ?? '', name: image.alt || t('image') });
+      }}>
       {!readOnly && (
         <div className="rich-toolbar" role="group" aria-label={t('formatText')}>
-          {action(
-            'bold',
-            () => {
-              editor.chain().focus().toggleBold().run();
-            },
-            editor.isActive('bold'),
-          )}
-          {action(
-            'italic',
-            () => {
-              editor.chain().focus().toggleItalic().run();
-            },
-            editor.isActive('italic'),
-          )}
-          {action(
-            'heading',
-            () => {
-              editor.chain().focus().toggleHeading({ level: 2 }).run();
-            },
-            editor.isActive('heading'),
-          )}
-          {action(
-            'bulletList',
-            () => {
-              editor.chain().focus().toggleBulletList().run();
-            },
-            editor.isActive('bulletList'),
-          )}
-          {action(
-            'orderedList',
-            () => {
-              editor.chain().focus().toggleOrderedList().run();
-            },
-            editor.isActive('orderedList'),
-          )}
-          {action(
-            'checklist',
-            () => {
-              editor.chain().focus().toggleTaskList().run();
-            },
-            editor.isActive('taskList'),
-          )}
-          {action(
-            'quote',
-            () => {
-              editor.chain().focus().toggleBlockquote().run();
-            },
-            editor.isActive('blockquote'),
-          )}
-          {action(
-            'codeBlock',
-            () => {
-              editor.chain().focus().toggleCodeBlock().run();
-            },
-            editor.isActive('codeBlock'),
-          )}
-          {action(
-            'link',
-            () => {
-              setLinkOpen(!linkOpen);
-              setLink(String(editor.getAttributes('link').href ?? ''));
-            },
-            editor.isActive('link'),
-          )}
-          {action('undo', () => {
-            editor.chain().focus().undo().run();
-          })}
-          {action('redo', () => {
-            editor.chain().focus().redo().run();
-          })}
-          {members.length > 0 && (
-            <label className="mention-select">
-              <span>@</span>
-              <select
-                aria-label={t('mentionMember')}
-                value=""
-                onChange={(e) => {
-                  const m = members.find((m) => m.id === e.target.value);
-                  if (m)
-                    editor
-                      .chain()
-                      .focus()
-                      .insertContent({
-                        type: 'mention',
-                        attrs: { id: m.id, label: m.name },
-                      })
-                      .run();
-                }}
-              >
-                <option value="">{t('mentionMember')}</option>
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {onUpload && (
-            <label className="file-button">
-              {t('attachFiles')}
-              <input
-                type="file"
-                multiple
-                onChange={(e) => {
-                  void addFiles(Array.from(e.target.files ?? []));
-                  e.target.value = '';
-                }}
-              />
-            </label>
-          )}
+          <button type="button" className="rich-icon-tool" aria-label={t('bold')} title={t('bold')} aria-pressed={controls.bold}
+            onMouseDown={event => event.preventDefault()} onClick={() => editor.chain().focus().toggleBold().run()}><Bold size={18} /></button>
+          <button type="button" className="rich-icon-tool" aria-label={t('italic')} title={t('italic')} aria-pressed={controls.italic}
+            onMouseDown={event => event.preventDefault()} onClick={() => editor.chain().focus().toggleItalic().run()}><Italic size={18} /></button>
+          <button type="button" aria-label={t('checklist')} title={t('checklist')} aria-pressed={controls.taskList}
+            onMouseDown={event => event.preventDefault()}
+            onClick={() => editor.chain().focus().toggleTaskList().run()}><ListChecks size={17} /><span className="rich-tool-label">{t('checklist')}</span></button>
+          {onUpload && <label className="file-button rich-image-button" title={t('insertImage')}><ImagePlus size={17} /><span className="rich-tool-label">{t('image')}</span>
+            <input type="file" multiple accept="image/*,.heic,.heif" aria-label={t('insertImage')}
+              onChange={event => { void addFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
+          </label>}
+          <button type="button" aria-label={t('link')} title={t('link')} aria-pressed={controls.link} aria-keyshortcuts="Control+k Meta+k"
+            onMouseDown={event => event.preventDefault()} onClick={() => setLinkOpen(true)}><Link size={17} /><span className="rich-tool-label">{t('link')}</span></button>
+          <details className="rich-more">
+            <summary aria-label={t('moreFormatting')}>Aa <ChevronDown size={15} /></summary>
+            <div className="rich-more-tools">
+              {action('heading', () => { editor.chain().focus().toggleHeading({ level: 2 }).run(); }, controls.heading)}
+              {action('bulletList', () => { editor.chain().focus().toggleBulletList().run(); }, controls.bulletList)}
+              {action('orderedList', () => { editor.chain().focus().toggleOrderedList().run(); }, controls.orderedList)}
+              {action('quote', () => { editor.chain().focus().toggleBlockquote().run(); }, controls.blockquote)}
+              {action('codeBlock', () => { editor.chain().focus().toggleCodeBlock().run(); }, controls.codeBlock)}
+              <button type="button" disabled={!controls.canUndo} onMouseDown={event => event.preventDefault()} onClick={() => editor.chain().focus().undo().run()}>{t('undo')}</button>
+              <button type="button" disabled={!controls.canRedo} onMouseDown={event => event.preventDefault()} onClick={() => editor.chain().focus().redo().run()}>{t('redo')}</button>
+              {members.length > 0 && <label className="mention-select"><span>@</span>
+                <select aria-label={t('mentionMember')} value="" onChange={event => {
+                  const member = members.find(m => m.id === event.target.value);
+                  if (member) editor.chain().focus().insertContent({ type: 'mention', attrs: { id: member.id, label: member.name } }).run();
+                }}>
+                  <option value="">{t('mentionMember')}</option>
+                  {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
+                </select>
+              </label>}
+              {onUpload && <label className="file-button">{t('attachFiles')}
+                <input type="file" multiple onChange={event => { void addFiles(Array.from(event.target.files ?? [])); event.target.value = ''; }} />
+              </label>}
+            </div>
+          </details>
+          {controls.image && <button type="button" onClick={() => {
+            const attrs = editor.getAttributes('image');
+            setImagePreview({ src: String(attrs.src), name: String(attrs.alt || t('image')) });
+          }}><Expand size={17} />{t('enlargeImage')}</button>}
         </div>
       )}
-      {linkOpen && (
-        <div className="button-row">
-          <label>
-            {t('linkAddress')}
-            <input value={link} onChange={(e) => setLink(e.target.value)} />
-          </label>
-          <button
-            type="button"
-            onClick={() => {
-              if (!link) {
-                editor.chain().focus().unsetLink().run();
-                setLinkOpen(false);
-              } else if (safeLink(link)) {
-                editor.chain().focus().extendMarkRange('link').setLink({ href: link }).run();
-                setLinkOpen(false);
-              } else setError('invalid_link');
-            }}
-          >
-            {t('save')}
-          </button>
-          <button type="button" onClick={() => setLinkOpen(false)}>
-            {t('cancel')}
-          </button>
-        </div>
-      )}
+      {linkOpen && <LinkDialog editor={editor} onClose={() => setLinkOpen(false)} />}
       <EditorContent editor={editor} />
+      {!readOnly && <Uploads queue={uploads.queue} insert={file => { insertUploadedFile(editor, file); }} />}
+      {documentMode && <p className="small muted image-retention-note">{t('inlineImageRetention')}</p>}
       {error && <p role="alert">{t(error)}</p>}
+      {imagePreview && <Dialog open title={imagePreview.name} className="image-preview-dialog" onOpenChange={open => { if (!open) setImagePreview(null); }}>
+        <img className="file-preview" src={imagePreview.src} alt={imagePreview.name} />
+        <div className="button-row">
+          <a href={imagePreview.src.replace(/\/preview$/, '/download')}>{t('downloadOriginal')}</a>
+          {!readOnly && controls.image && editor.getAttributes('image').src === imagePreview.src && <button type="button" onClick={() => {
+            editor.commands.deleteSelection();
+            setImagePreview(null);
+          }}>{t('removeInlineImage')}</button>}
+        </div>
+        {!readOnly && <p className="small muted">{t('inlineImageRetention')}</p>}
+      </Dialog>}
     </div>
   );
 }
