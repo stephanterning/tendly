@@ -154,6 +154,7 @@ Cards prioritize title, epic identity, high-priority badge when present, size (n
 - Tiptap-style rich descriptions and comments: headings, emphasis, lists, checklists, hyperlinks, quotes, code blocks, inline images, Markdown shortcuts, and `@mentions`.
 - Chronological **flat** comments with author/timestamp, editing/deleting one's own comment, attached images/files; **no threaded replies**. Separate tabs for Comments and Activity. `@mentions` generate notifications when that capability ships.
 - Attach several images/files per task, camera uploads on mobile, drag-and-drop and pasted screenshots (`Cmd/Ctrl+V`), thumbnails and full-size viewing. Files belong in backup/export.
+- **Owner clarification, 2026-11-01:** configurable 50 MB per file; preview images and PDFs. Preserve original images and generate separate previews; HEIC images must work without manual conversion. Video support is not required for Stage 7.
 - Activity history records who changed status, assignments, deadlines, completion and other significant properties; not every historical change must be undoable.
 - Search while typing across tasks/subtasks, epics, tags, comments and archived tasks; support filter expressions over results. Desktop `Cmd/Ctrl+K`. No AI/semantic search requirement.
 - REST mutations + WebSocket change signals keep multiple devices synchronized. Concurrent same-field edits require conflict resolution; different-field edits should merge when safe. No Google-Docs-style co-editing in v1.

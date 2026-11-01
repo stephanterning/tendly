@@ -6,6 +6,7 @@ x-app-env: &app-env
   PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?Set PUBLIC_ORIGIN to your HTTPS origin}
   APP_VERSION: ${TENDLY_VERSION:-0.0.0-dev}
   LOG_LEVEL: ${LOG_LEVEL:-info}
+  ATTACHMENT_MAX_BYTES: ${ATTACHMENT_MAX_BYTES:-50000000}
 services:
   postgres:
     image: postgres:17-bookworm

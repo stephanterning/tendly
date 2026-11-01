@@ -8,6 +8,8 @@ const schema = z.object({
     const url = new URL(value);
     return !url.username && !url.password && url.pathname === '/' && !url.search && !url.hash;
   }, 'Expected an origin without credentials, path, query, or fragment'),
+  ATTACHMENT_MAX_BYTES: z.coerce.number().int().positive().max(1_000_000_000).default(50_000_000),
+  ATTACHMENT_ROOT: z.string().default('/data/attachments'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),

@@ -1,3 +1,4 @@
+import { registerHouseholdEvents } from '../collaboration/events.js';
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import cookie from '@fastify/cookie';
@@ -6,12 +7,12 @@ import websocket from '@fastify/websocket';
 import { z } from 'zod';
 import { and, eq, gt } from 'drizzle-orm';
 import type { RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/server';
-import { emailSchema, errorSchema, nameSchema, okSchema, registrationInput, roleSchema, sessionSchema, smtpSchema, verificationInput } from '@tendly/shared';
+import { emailSchema, errorSchema, nameSchema, timezoneSchema, okSchema, registrationInput, roleSchema, sessionSchema, smtpSchema, verificationInput } from '@tendly/shared';
 import { AccountService } from './service.js';
 import { MailService } from './mail.js';
 import { AccountError } from './errors.js';
 import { accountView, deploymentAdmin, householdAccess, lockAccounts, recent, signedIn } from './access.js';
-import { credentials, memberships, securityEvents, sessions, tokens, users } from './schema.js';
+import { credentials, households, memberships, securityEvents, sessions, tokens, users } from './schema.js';
 import { digest, randomToken } from './crypto.js';
 
 const ok = { ok: true as const };
@@ -47,12 +48,13 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
     reply.header('Referrer-Policy', 'no-referrer');
     if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
       if (request.headers.origin !== service.origin) throw new AccountError('invalid_origin', 403);
-      if (!request.headers['content-type']?.startsWith('application/json')) throw new AccountError('json_required', 415);
+      if (!(request.routeOptions.config.fileUpload && request.headers['content-type']?.startsWith('multipart/form-data;')) && !request.headers['content-type']?.startsWith('application/json')) throw new AccountError('json_required', 415);
     }
   });
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof AccountError) return reply.code(error.statusCode).send({ error: error.code });
     if (error && typeof error === 'object' && 'validation' in error && error.validation) return reply.code(400).send({ error: 'invalid_input' });
+    if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 413) return reply.code(413).send({ error: 'file_too_large' });
     if (error && typeof error === 'object' && 'statusCode' in error && error.statusCode === 429) return reply.code(429).send({ error: 'too_many_requests' });
     request.log.error({ code: 'account_operation_failed' }, 'Account operation failed');
     return reply.code(500).send({ error: 'operation_failed' });
@@ -71,9 +73,20 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
   };
   app.addHook('onRoute', (route) => {
     route.schema ??= {};
-    route.schema.response = { 400: errorSchema, 401: errorSchema, 403: errorSchema, 404: errorSchema, 409: errorSchema, 429: errorSchema, 500: errorSchema, 503: errorSchema, ...(typeof route.schema.response === 'object' ? route.schema.response : {}) };
+    route.schema.response = { 400: errorSchema, 401: errorSchema, 403: errorSchema, 404: errorSchema, 409: errorSchema, 413:errorSchema,415:errorSchema, 429: errorSchema, 500: errorSchema, 503: errorSchema, ...(typeof route.schema.response === 'object' ? route.schema.response : {}) };
   });
   const authLimit = { rateLimit: { max: 20, timeWindow: '1 minute' } };
+  app.patch('/api/v1/households/:id', { schema: { params: idParam, body: z.object({ baseName:z.string(),baseTimezone:z.string(),name:nameSchema,timezone:timezoneSchema }),response:{200:okSchema} } },async request=>{
+    const current=await actor(request);signedIn(current);
+    await db.transaction(async tx=>{
+      await householdAccess(tx,current,request.params.id,true);
+      const [home]=await tx.select().from(households).where(eq(households.id,request.params.id)).for('update');
+      await householdAccess(tx,current,request.params.id,true);
+      if(!home || home.name!==request.body.baseName || home.timezone!==request.body.baseTimezone)throw new AccountError('household_conflict',409);
+      await tx.update(households).set({name:request.body.name,timezone:request.body.timezone}).where(eq(households.id,home.id));
+    });
+    return ok;
+  });
   app.get('/api/v1/auth/status', { schema: { response: { 200: z.object({ initialized: z.boolean(), emailAvailable: z.boolean() }) } } }, async () => ({ initialized: await service.initialized(), emailAvailable: !!(await mail.config()) }));
   app.get('/api/v1/auth/session', { schema: { response: { 200: sessionSchema } } }, async (request) => {
     const current = await actor(request);
@@ -218,18 +231,6 @@ export async function registerAccountRoutes(server: FastifyInstance, service: Ac
   });
   // Authorization happens before upgrade and again while the socket is alive.
   // Future broadcasts must recheck membership before sending household content.
-  app.get('/api/v1/households/:id/events', {
-    websocket: true, schema: { params: idParam, hide: true },
-    preValidation: async (request) => {
-      if (request.headers.origin !== service.origin) throw new AccountError('invalid_origin', 403);
-      await householdAccess(db, await actor(request), request.params.id);
-    },
-  }, (socket, request) => {
-    const timer = setInterval(() => {
-      void actor(request).then((current) => householdAccess(db, current, request.params.id)).catch(() => socket.close(1008, 'Access revoked'));
-    }, 15_000);
-    socket.on('close', () => clearInterval(timer));
-    socket.on('error', () => clearInterval(timer));
-  });
+  registerHouseholdEvents(app, service, sessionName);
 
 }
