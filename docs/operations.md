@@ -1,6 +1,8 @@
 # Tendly operations
 
-Stage 2 provides account setup and household membership. This is not yet the complete M1 VP; task workflows and the full backup/restoration drill remain later stages.
+Stages 1–3 and 7 provide accounts, task planning, content/files and collaboration.
+The complete M1 VP still requires filters/views, hierarchy, recurrence/lifecycle and
+full release acceptance.
 
 ## Build and start
 
@@ -22,7 +24,7 @@ forwarded host input. Use a stable hostname; changing it impacts passkeys.
 
 Compose starts PostgreSQL, waits for health, runs the locked migration job once, then
 starts API/worker/web. Named volumes persist PostgreSQL and attachment storage. The attachment volume is writable by the non-root API user and its persistence is
-checked in CI. Attachment upload/download routes arrive in Stage 7.
+checked in CI. Stage 7 adds authenticated upload/download and preview routes.
 
 Check `docker compose ps` and `docker compose logs`. Health endpoints separate process
 liveness from database readiness. Worker health requires a recent successful DB check.
@@ -143,3 +145,54 @@ to the clipboard, but server expiration and one-use consumption remain authorita
 
 See [optional place maps](operations/maps.md) for tile-provider configuration,
 self-hosted tiles, attribution and network behavior.
+
+## Stage 7 content and file storage
+
+Descriptions use validated Tiptap documents; the migration preserves existing plain
+text literally. Comments retain author/version metadata and deleted comments can be
+restored by a guarded Undo. No notifications are sent for mentions in v1.0.
+
+`ATTACHMENT_MAX_BYTES` defaults to 50,000,000 (50 MB). The API advertises the limit
+to clients. If increasing it, increase `client_max_body_size` in the bundled nginx
+configuration and any outer proxy too, leaving room for multipart overhead. Uploads
+stream to the attachments volume. PNG/JPEG/WebP/GIF/AVIF and HEIC previews are
+converted to JPEG; full-size display copies and thumbnails are separate from the
+unchanged original. PDFs use the browser's built-in viewer with a download fallback.
+HEIC conversion runs in a separate process with a 30-second timeout and a bounded
+JavaScript heap. At most two preview/upload operations run concurrently per API;
+additional callers get a retryable busy response. Invalid image conversions remove
+the staged files and show an error. Video support is not included.
+
+File bytes are never publicly exposed by nginx. Downloads, previews and thumbnails
+all require a current authorized household session. Hourly cleanup removes files
+older than 24 hours only when no attachment record exists. Referenced originals and
+previews are retained; archive/Trash retention integrates in Stage 6.
+
+## Manual database and attachment backup
+
+Run from the repository root with the intended Compose project selected:
+
+```sh
+bash infrastructure/scripts/backup.sh /absolute/path/to/new-backup
+```
+
+The script briefly stops API/worker/web, exports a consistent database and attachment
+archive, copies `.env`, then restarts the services even if export fails. Protect the
+backup directory: `config.env` includes database and encryption secrets. Preserve
+any shell environment overrides, Compose override files and image versions alongside
+it: copying `.env` does not capture those. Treat an
+unsuccessful backup as incomplete. Keep a separate copy off the host.
+
+For a **fresh, isolated destination** with compatible images, copy/configure `.env`
+using the saved `APP_ENCRYPTION_KEY`, database password and installation settings.
+Set the intended Compose project, ports and HTTPS origin before restoring. Keep the
+original hostname for existing passkeys. Restore only trusted backup archives:
+
+```sh
+bash infrastructure/scripts/restore.sh /absolute/path/to/backup --replace-destination
+```
+
+This replaces the destination database and attachment files. A failed restore leaves
+writers stopped for diagnosis. Verify account access, representative task descriptions,
+comments and downloaded original bytes after restoring. Stage 8 still requires the
+full fresh-host drill with later hierarchy, filters and recurrence data (AC-24).

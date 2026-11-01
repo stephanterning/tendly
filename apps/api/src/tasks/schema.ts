@@ -15,7 +15,7 @@ export const entities = pgTable('planning_entities', {
 export const tasks = pgTable('tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
   householdId: uuid('household_id').notNull().references(() => households.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(), description: text('description').notNull().default(''),
+  title: text('title').notNull(), description: jsonb('description').$type<string | import('@tendly/shared').Document>().notNull().default(''),
   status: statusEnum('status').notNull().default('todo'), bucket: bucketEnum('planning_bucket').notNull().default('someday'),
   precedingColumn: text('preceding_column'),
   epicId: uuid('epic_id').references(() => entities.id, { onDelete: 'set null' }),

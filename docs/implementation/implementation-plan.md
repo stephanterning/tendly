@@ -1,7 +1,7 @@
 # Tendly — Implementation Plan
 
-**Version:** 1.0  
-**Status:** Milestone scope approved, consolidated 2026-10-14  
+**Version:** 1.1
+**Status:** Milestone scope approved 2026-10-14; internal delivery order revised 2026-11-01
 **Delivery model:** Agent-led development, reviewable PRs; **large product milestones**
 
 ## 1. Release philosophy
@@ -60,16 +60,34 @@ Release numbers are indicative; patch releases may occur between milestones. M4 
 
 ### 3.5 Internal engineering sequence (not separate releases)
 
-| Checkpoint | Focus | Demo/verification |
-|---|---|---|
-| **1A** | Repo, CI, containers, migrations, secure account/households | New install -> first admin via CLI code -> passkey sign-in -> invite member |
-| **1B** | Core task schema, hierarchy, epics, property editors, basic Now/Board | Create/reparent/categorize tasks on desktop and phone |
-| **1C** | Dynamic inheritance, dependencies, availability, date/effort rules | Parent change reflected in deep child; blocked work omitted from Now |
-| **1D** | Saved filters, AST engine, view configuration, DnD/cards | Create complex filter, live-preview, combine quick chips, saved view on both devices |
-| **1E** | Recurrence/templates, content/files, search, archive/trash, worker | Generate next occurrence with correct internal dependencies; attach image; restore from Trash |
-| **1F** | Full multiuser sync/concurrency, UX polish, accessibility, test/restore review | Two phones + desktop complete daily workflow without blocking defects |
+The [approved eight-stage delivery plan](delivery-stages.md) is authoritative for
+execution order and stage dependencies. It replaces the earlier 1A–1F sequencing.
+Stage identifiers are retained so existing reviews and acceptance mappings stay valid.
 
-Reorder/checkpoint overlap is permitted when dependencies require it. Do not declare M1 complete at 1A–1E; **1F quality and integration are mandatory**.
+| Order | Stage | Focus |
+|---|---|---|
+| Foundation | 1–3 | Infrastructure/security/accounts, task capture, six columns, ordinary properties and guarded autosave |
+| **Implemented — priority 1** | **7** | Rich text, comments/mentions, files/photos, search, multi-device sync/conflicts/Undo and applicable settings |
+| **Implemented — priority 2** | **5** | Reusable filters, quick bars, shared views, epic lanes, Board interactions and global ordering |
+| **Next** | **4** | Hierarchy, inheritance, dependencies/availability, warnings and integration with existing content/filter/view workflows |
+| Then | 6 | Templates, recurrence, archive/Trash, safe jobs and lifecycle integration |
+| Final M1 gate | 8 | Complete acceptance, mobile/PWA, accessibility, usability, manual restore drill and release readiness |
+
+**Owner priority, 2026-11-01:** deliver Stage 7 and Stage 5 first so the household
+can begin meaningful everyday use and provide useful evaluations. Review those
+workflows together on phone and desktop after Stage 5 and use feedback throughout
+the remaining work. This is an internal evaluation point, not a reduced M1 release.
+
+The [Stage 5 review](stage-5-review.md) records the completed filter/view checkpoint.
+Later-domain integrations remain explicit obligations: Stage 5 now connects search to
+shared filters; Stage 4 completes inherited filtering, dependency-aware availability,
+subtask views/reparenting and descendant search; Stage 6 completes archived search
+and lifecycle/recurrence integration with content, sync, Undo and settings. Use the
+same server domain resolvers throughout and preserve existing household data.
+See the delivery plan for dependencies and acceptance ownership.
+
+M1 scope and the M2–M4 milestones are unchanged. **Stage 8 quality and integration
+are mandatory**; completion of the two priority stages does not constitute M1 acceptance.
 
 ### 3.6 Definition of Done for M1
 

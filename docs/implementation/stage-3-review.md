@@ -47,13 +47,21 @@ Change appearance in More → Account & household to compare light and dark.
 Synthetic browser-test accounts and sample tasks exist only in the separate disposable
 installation, not in the owner's preview household.
 
-## Remaining approved stages
+## Remaining approved stages at this review
 
-Stage 4 adds hierarchy, inheritance and dependency availability. Stage 5 adds shared
+Stage 7 was subsequently implemented; see the [Stage 7 review](stage-7-review.md)
+and [current delivery plan](delivery-stages.md) for present progress.
+
+The owner revised the remaining order on 2026-11-01 to **7 → 5 → 4 → 6 → 8**.
+Stage 7 is next: rich descriptions, comments/files/search, full WebSocket
+reconciliation and expanded Undo/conflict work. Stage 5 follows with shared
 filters/views, configurable metadata, epic lanes, drag/drop and global manual reorder.
-Stage 6 adds templates, recurrence, archive and Trash. Stage 7 adds rich descriptions,
-comments/files/search, full WebSocket reconciliation and expanded Undo/conflict work.
+These two stages are prioritized for meaningful household use and evaluation.
+Stage 4 then adds hierarchy, inheritance and dependency availability, including
+integration into the earlier filters/views/search. Stage 6 adds templates,
+recurrence, archive and Trash, including lifecycle integration into earlier work.
 Stage 8 completes PWA/device, accessibility, operations and the full VP acceptance gate.
+See [the delivery plan](delivery-stages.md) for cross-stage acceptance obligations.
 No M1 requirement has been moved to a later milestone.
 
 ## Owner review corrections

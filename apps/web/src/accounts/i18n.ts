@@ -1,8 +1,11 @@
+import { viewCopy } from '../views/i18n.js';
+import { contentCopy } from '../content/i18n.js';
 import { taskCopy } from '../tasks/i18n.js';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 const copy: Record<string, [string, string]> = {
   ...taskCopy,
+  ...contentCopy, ...viewCopy,
   haveInvitationCode: ['Have an invitation code?', 'Har du en inbjudningskod?'],
   invitationCode: ['Invitation code', 'Inbjudningskod'],
   useInvitationCode: ['Use invitation code', 'Använd inbjudningskod'],

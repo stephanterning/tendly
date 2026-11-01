@@ -1,3 +1,4 @@
+import { contentJourney } from './content-journey.js';
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { taskJourney } from './tasks-journey.js';
 import { execFileSync } from 'node:child_process';
@@ -23,9 +24,9 @@ async function settings(page: Page) {
 async function mailLink(recipient: string, purpose: string) {
   let link = '';
   await expect.poll(async () => {
-    const listing = await fetch('http://localhost:8025/api/v1/messages').then(r => r.json()) as { messages: { ID: string; To: { Address: string }[] }[] };
+    const listing = await fetch((process.env.TEST_MAILBOX_ORIGIN ?? 'http://localhost:8025') + '/api/v1/messages').then(r => r.json()) as { messages: { ID: string; To: { Address: string }[] }[] };
     for (const message of listing.messages.filter(m => m.To.some(t => t.Address === recipient))) {
-      const detail = await fetch('http://localhost:8025/api/v1/message/' + message.ID).then(r => r.json()) as { Text: string };
+      const detail = await fetch((process.env.TEST_MAILBOX_ORIGIN ?? 'http://localhost:8025') + '/api/v1/message/' + message.ID).then(r => r.json()) as { Text: string };
       const match = detail.Text.match(new RegExp('http[^\\s]+/#' + purpose + '=[^\\s]+'));
       if (match) { link = match[0]; return true; }
     }
@@ -35,6 +36,7 @@ async function mailLink(recipient: string, purpose: string) {
 }
 
 test('install, plan tasks, invite and recover with real WebAuthn verification', async ({ page, context, browser }) => {
+  test.setTimeout(120_000);
   await authenticator(context, page);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Make yourself at home' })).toBeVisible();
@@ -45,7 +47,12 @@ test('install, plan tasks, invite and recover with real WebAuthn verification', 
   await page.getByLabel('Household name').fill('Our home');
   await page.getByLabel('Household timezone').fill('Europe/Stockholm');
   await page.getByRole('button', { name: 'Create account with a passkey' }).click();
+  const planningStarted = Date.now();
   await taskJourney(page);
+  await contentJourney(page,context,browser);
+  // The combined journey drives two devices at machine speed. Keep production
+  // rate limits intact and let the planning request window expire before accounts.
+  await page.waitForTimeout(Math.max(0, 61_000 - (Date.now() - planningStarted)));
   await settings(page);
   await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   const offlineContext = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'en-US', permissions: ['clipboard-read', 'clipboard-write'] });

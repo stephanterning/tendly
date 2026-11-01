@@ -14,3 +14,10 @@ Runtime/development packages retain their upstream license files in dependency p
 Review the generated dependency inventory under docs/dependencies.json before release.
 The inventory records declared SPDX metadata, not a substitute for checking licenses
 when adding dependencies. Container base images also carry upstream notices.
+
+Stage 7 adds Tiptap/ProseMirror editor packages (MIT), sharp (Apache-2.0),
+heic-convert/heic-decode (ISC) and libheif-js (LGPL-3.0), together with their
+transitive dependencies. The unmodified libheif-js package supplies the HEIC decoder;
+its upstream source and license references are retained in the distributed dependency
+package. Image fixtures under tests/fixtures were generated for Tendly; they do not
+contain third-party photographs.
