@@ -1,8 +1,9 @@
 import type { Task, TaskChanges } from '@tendly/shared';
 import { api } from '../accounts/api.js';
 // Zod optional values may include undefined; JSON requests omit them.
-function defined<T extends object>(value: T) {
-  return Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as { [K in keyof T]: Exclude<T[K], undefined> };
+type JsonDefined<T> = T extends (infer U)[] ? JsonDefined<U>[] : T extends object ? { [K in keyof T]: JsonDefined<Exclude<T[K], undefined>> } : T;
+export function defined<T>(value:T):JsonDefined<T> {
+  return JSON.parse(JSON.stringify(value)) as JsonDefined<T>;
 }
 export class EditFailure extends Error {
   constructor(message: string, readonly current?: Task, readonly fields?: string[]) { super(message); }

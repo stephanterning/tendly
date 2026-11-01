@@ -1,3 +1,4 @@
+import { HouseholdSettings } from './HouseholdSettings.js';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +11,7 @@ import { enroll, errorKey, signIn, type EntryLink } from './Auth.js';
 type Run = (action: () => Promise<unknown>, message?: string) => Promise<void>;
 export function Settings({ account, refresh, link, clearLink, useInvitation, embedded = false, activeHouseholdId }: { account: Account; refresh: () => Promise<void>; link: EntryLink; clearLink: () => void; useInvitation: (code: string) => void; embedded?: boolean; activeHouseholdId?: string }) {
   const { t, i18n } = useTranslation();
+  const version = useQuery({ queryKey: ['version'], queryFn:()=>result(api.GET('/api/v1/version')) });
   const queries = useQueryClient();
   const [page, setPage] = useState('account');
   const [householdId, setHouseholdId] = useState(activeHouseholdId ?? account.households[0]?.id ?? '');
@@ -46,6 +48,7 @@ export function Settings({ account, refresh, link, clearLink, useInvitation, emb
       {page === 'account' && <><AccountPanel account={account} run={run} busy={busy} /><section className="panel"><InvitationCodeEntry onUse={useInvitation} /></section></>}
       {page === 'members' && household && <MembersPanel key={household.id} household={household} run={run} busy={busy} />}
       {page === 'smtp' && account.deploymentAdmin && <SmtpPanel run={run} busy={busy} />}
+    {version.data&&<p className="small muted">Tendly · {version.data.version}</p>}
     </section></div>
   </div>;
 }
@@ -83,6 +86,7 @@ function MembersPanel({ household, run, busy }: { household: Account['households
   const members = useQuery({ queryKey: ['members', household.id], queryFn: () => result(api.GET('/api/v1/households/{id}/members', { params: { path: { id: household.id } } })) });
   return <>
     <section className="panel"><h2>{household.name}</h2><p className="muted small">{household.timezone}</p>
+    {household.role === 'admin' && <HouseholdSettings household={household} run={run} busy={busy} />}
       {members.isError && <p role="alert">{t('network_error')} <button onClick={() => void members.refetch()}>{t('retry')}</button></p>}
       <ul className="item-list members-list">{members.data?.map((member) => <li key={member.id}>
         <div><strong>{member.name}</strong><span className="small muted">{member.email}</span></div>

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { descriptionSchema } from './content.js';
 export const columns = ['someday', 'within_year', 'within_month', 'todo', 'in_progress', 'done'] as const;
 export const columnSchema = z.enum(columns);
 export const sizes = ['XS', 'S', 'M', 'L', 'XL'] as const;
@@ -16,7 +17,7 @@ export { iconNames } from './icons.js';
 export const iconSchema = z.enum(iconNames);
 const ids = z.array(z.uuid()).max(100);
 export const taskFields = z.object({
-  title: z.string().trim().min(1).max(300), description: z.string().max(50_000),
+  title: z.string().trim().min(1).max(300), description: descriptionSchema,
   column: columnSchema, epicId: z.uuid().nullable(), high: z.boolean(),
   size: z.enum(sizes).nullable(), estimateMinutes: z.number().int().min(1).max(525600).nullable(),
   startDate: z.iso.date().nullable(), startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable(),

@@ -3,3 +3,7 @@ export const healthSchema = z.object({ status: z.enum(['ok', 'unavailable']) });
 export const versionSchema = z.object({ name: z.literal('Tendly'), version: z.string() });
 export * from './accounts.js';
 export * from './tasks.js';
+
+export * from './content.js';
+
+export * from "./views.js";

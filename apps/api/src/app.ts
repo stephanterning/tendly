@@ -1,3 +1,5 @@
+import { registerViewRoutes } from './views/routes.js';
+import { registerContentRoutes } from './content/routes.js';
 import { registerTaskRoutes } from './tasks/routes.js';
 import { registerAccountRoutes } from './accounts/routes.js';
 import type { AccountService } from './accounts/service.js';
@@ -9,6 +11,8 @@ import { healthSchema, versionSchema } from '@tendly/shared';
 import { logRedaction } from './logging.js';
 
 interface AppOptions {
+  attachmentRoot?: string;
+  attachmentLimit?: number;
   accounts?: { service: AccountService; mail: MailService };
   checkDatabase: () => Promise<void>;
   closeDatabase?: () => Promise<void>;
@@ -22,7 +26,14 @@ export async function buildApp(options: AppOptions) {
   app.setSerializerCompiler(serializerCompiler);
   await app.register(swagger, {
     openapi: { info: { title: 'Tendly API', version: options.version ?? '0.0.0-dev' } },
-    transform: jsonSchemaTransform,
+    transform: input=>{
+      const transformed=jsonSchemaTransform(input);
+      if(input.route.config?.fileUpload) {
+        transformed.schema.consumes=['multipart/form-data'];
+        transformed.schema.body={type:'object',required:['file'],properties:{file:{type:'string',format:'binary'}}};
+      }
+      return transformed;
+    },
   });
   // Do not log URL query strings: later recovery links carry single-use secrets.
   app.addHook('onResponse', async (request, reply) => {
@@ -41,6 +52,8 @@ export async function buildApp(options: AppOptions) {
   if (options.accounts) {
     await registerAccountRoutes(app, options.accounts.service, options.accounts.mail);
     await registerTaskRoutes(app, options.accounts.service);
+    await registerViewRoutes(app, options.accounts.service);
+    await registerContentRoutes(app, options.accounts.service, options.attachmentRoot ?? '/data/attachments', options.attachmentLimit ?? 50_000_000);
   }
   await app.ready();
   return app;
