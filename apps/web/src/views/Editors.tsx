@@ -88,7 +88,7 @@ export function FilterEditor({
     [busy, setBusy] = useState(false),
     [showHistory, setShowHistory] = useState(false);
   const initial = useRef(JSON.stringify({ name, icon, color, expression }));
-  const guard = useDraftGuard(JSON.stringify({ name, icon, color, expression }) !== initial.current, busy);
+  const guard = useDraftGuard(JSON.stringify({ name, icon, color, expression }) !== initial.current, busy, props.onClose);
   const close = () => guard.request(props.onClose);
   const [version, setVersion] = useState('');
   const path = { householdId: props.householdId, id: base?.id ?? '' };
@@ -335,7 +335,7 @@ export function ViewEditor({
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   const initial = useRef(JSON.stringify(draft));
-  const guard = useDraftGuard(JSON.stringify(draft) !== initial.current, busy);
+  const guard = useDraftGuard(JSON.stringify(draft) !== initial.current, busy, props.onClose);
   const close = () => guard.request(props.onClose);
   const latest = props.catalog.views.find((v) => v.id === base?.id);
   const path = { householdId: props.householdId, id: base?.id ?? '' };
