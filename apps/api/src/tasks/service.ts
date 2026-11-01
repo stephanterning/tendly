@@ -1,4 +1,7 @@
-import { and, asc, eq, gt, inArray, isNull, max } from 'drizzle-orm';
+import { ViewService } from '../views/service.js';
+import { validateReferences } from '../content/references.js';
+import { toDocument } from '@tendly/shared';
+import { and, asc, eq, inArray, isNull, max } from 'drizzle-orm';
 import { z } from 'zod';
 import { taskFields, taskSchema, entitySchema, type Task, type TaskChanges, type TaskFields, type taskCreateSchema, type entityCreateSchema, type entityPatchSchema } from '@tendly/shared';
 import type { Database, QueryDatabase, Transaction } from '../accounts/database.js';
@@ -26,7 +29,7 @@ export class TaskService {
     const [row] = await db.select().from(planningSettings).where(eq(planningSettings.householdId, householdId));
     return row ? { version: row.version, thresholds: row.thresholds } : { version: 0, thresholds: [60, 240, 480, 1440] as [number, number, number, number] };
   }
-  async hydrate(db: QueryDatabase, rows: Row[], timezone: string): Promise<Task[]> {
+  async hydrate(db: QueryDatabase, rows: Row[], timezone: string, now = Date.now()): Promise<Task[]> {
     if (!rows.length) return [];
     const ids = rows.map(r => r.id);
     const links = await db.select({ taskId: taskEntities.taskId, id: entities.id, kind: entities.kind }).from(taskEntities).innerJoin(entities, eq(entities.id, taskEntities.entityId)).where(inArray(taskEntities.taskId, ids));
@@ -34,7 +37,7 @@ export class TaskService {
     return rows.map(row => {
       const column = taskColumn(row);
       return taskSchema.parse({
-        ...row, column, ...availability({ ...row, column }, timezone),
+        ...row, column, ...availability({ ...row, column }, timezone, now),
         createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(), completedAt: row.completedAt?.toISOString() ?? null,
         assignees: assignees.filter(a => a.taskId === row.id).map(a => a.userId).sort(),
         places: links.filter(l => l.taskId === row.id && l.kind === 'place').map(l => l.id).sort(),
@@ -49,25 +52,13 @@ export class TaskService {
     return (await this.hydrate(db, [row], timezone))[0]!;
   }
   async list(actor: Actor, householdId: string, view: 'now' | 'board', offset: number, limit: number) {
-    const household = await this.scope(this.db, actor, householdId);
-    const selected: Row[] = [];
-    let cursor = -1, matched = 0, more = true;
-    // Bound each scan; filter before pagination. There is no silent household task cap.
-    // Stage 5's filter compiler will extend this same effective-result boundary.
-    while (more && selected.length <= limit) {
-      const batch = await this.db.select().from(tasks).where(and(eq(tasks.householdId, householdId), isNull(tasks.trashedAt), isNull(tasks.archivedAt), gt(tasks.order, cursor))).orderBy(asc(tasks.order)).limit(256);
-      more = batch.length === 256;
-      for (const row of batch) {
-        cursor = row.order;
-        const column = taskColumn(row);
-        if (view === 'now' && (!['within_month', 'todo', 'in_progress'].includes(column) || !availability({ ...row, column }, household.timezone).available)) continue;
-        if (matched++ >= offset) selected.push(row);
-        if (selected.length > limit) break;
-      }
-    }
-    return { items: await this.hydrate(this.db, selected.slice(0, limit), household.timezone), nextOffset: selected.length > limit ? offset + limit : null };
+    const views = new ViewService(this.db);
+    const catalog = await views.catalog(actor, householdId);
+    const selected = catalog.views.find(v => v.builtin === view)!;
+    return views.query(actor, householdId, { viewId: selected.id, offset, limit });
   }
   async validate(db: QueryDatabase, householdId: string, value: TaskFields, previous?: Task) {
+    await validateReferences(db, householdId, previous?.id, value.description, previous?.description);
     if ((!value.startDate && value.startTime) || (!value.deadlineDate && value.deadlineTime)) throw new AccountError('date_required');
     const expected = [
       ...(value.epicId ? [{ id: value.epicId, kind: 'epic' }] : []),
@@ -94,7 +85,7 @@ export class TaskService {
   values(value: TaskFields) {
     const { column: _column, places: _places, resources: _resources, tags: _tags, assignees: _assignees, ...plain } = value;
     void _column; void _places; void _resources; void _tags; void _assignees;
-    return plain;
+    return { ...plain, description: toDocument(plain.description) };
   }
   async create(actor: Actor, householdId: string, input: z.infer<typeof taskCreateSchema>) {
     return this.db.transaction(async tx => {
@@ -115,7 +106,9 @@ export class TaskService {
     });
   }
   async patch(actor: Actor, householdId: string, id: string, baseVersion: number, changes: TaskChanges, confirmUnavailable = false) {
-    return this.db.transaction(async tx => {
+    return this.db.transaction(tx => this.patchInTransaction(tx, actor, householdId, id, baseVersion, changes, confirmUnavailable));
+  }
+  async patchInTransaction(tx: Transaction, actor: Actor, householdId: string, id: string, baseVersion: number, changes: TaskChanges, confirmUnavailable = false) {
       const household = await this.scope(tx, actor, householdId, true);
       const [row] = await tx.select().from(tasks).where(and(eq(tasks.id, id), eq(tasks.householdId, householdId), isNull(tasks.trashedAt))).for('update');
       if (!row) throw new AccountError('task_not_found', 404);
@@ -152,7 +145,6 @@ export class TaskService {
       await this.collections(tx, id, next);
       await tx.insert(taskActivities).values({ taskId: id, actorId: actor.user.id, version, fields: [...changed] });
       return this.get(tx, householdId, id, household.timezone);
-    });
   }
   async entityList(actor: Actor, householdId: string) {
     await this.scope(this.db, actor, householdId);

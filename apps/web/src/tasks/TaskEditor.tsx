@@ -1,11 +1,13 @@
+import { ContentPanel } from '../content/ContentPanel.js';
+import { uploadFiles } from '../content/api.js';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { taskFields, type Task, type TaskChanges, type Entity } from '@tendly/shared';
 import { Dialog } from '../components/ui/dialog.js';
 import { TaskFields, type Member } from './TaskFields.js';
 import { EditFailure } from './api.js';
-export function TaskEditor({ task, entities, members, timezone, onSave, onRefresh, onClose }: {
-  task: Task; entities: Entity[]; members: Member[]; timezone: string;
+export function TaskEditor({ userId, task, entities, members, timezone, onSave, onRefresh, onClose }: {
+  userId: string; task: Task; entities: Entity[]; members: Member[]; timezone: string;
   onRefresh: (task: Task) => void;
   onSave: (base: Task, changes: TaskChanges, confirm?: boolean) => Promise<Task>; onClose: () => void;
 }) {
@@ -15,16 +17,17 @@ export function TaskEditor({ task, entities, members, timezone, onSave, onRefres
   const [failure, setFailure] = useState<EditFailure | null>(null);
   const [pending, setPending] = useState(false);
   const saving = useRef(false);
+  const [contentValid,setContentValid]=useState(true);
   const changes: TaskChanges = Object.fromEntries(Object.entries(draft).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(base[key as keyof Task])));
   const signature = JSON.stringify(changes);
   async function save(from = base, confirmed = false): Promise<boolean> {
-    if (saving.current) return false;
+    if (saving.current || !contentValid) return false;
     if (signature === '{}') return true;
     if (!draft.title.trim()) { setFailure(new EditFailure('invalid_input')); return false; }
     saving.current = true; setPending(true); setFailure(null);
     try {
       const next = await onSave(from, changes, confirmed);
-      setBase(next); setDraft(taskFields.parse(next)); return true;
+      setBase(next); setDraft(current => ({ ...taskFields.parse(next), ...Object.fromEntries(Object.entries(current).filter(([key,value]) => JSON.stringify(value) !== JSON.stringify(draft[key as keyof typeof draft]))) })); return true;
     } catch (error) {
       setFailure(error instanceof EditFailure ? error : new EditFailure('network_error')); return false;
     } finally { saving.current = false; setPending(false); }
@@ -54,10 +57,11 @@ export function TaskEditor({ task, entities, members, timezone, onSave, onRefres
       {failure.current ? <div className="button-row"><button onClick={() => { onRefresh(failure.current!); setBase(failure.current!); setDraft(taskFields.parse(failure.current!)); setFailure(null); }}>{t('useLatest')}</button><button onClick={() => void save(failure.current!)}>{t('keepMine')}</button></div>
         : <button onClick={() => void save(base, failure.message === 'confirm_unavailable')}>{t(failure.message === 'confirm_unavailable' ? 'column_in_progress' : 'retry')}</button>}
     </div>}
-    <fieldset disabled={pending}>
+    <fieldset>
       <label className="sr-only" htmlFor="task-title">{t('taskTitle')}</label>
       <textarea id="task-title" className="task-title-input" rows={2} maxLength={300} value={draft.title} onChange={e => { setDraft({ ...draft, title: e.target.value }); setFailure(null); }} />
-      <TaskFields value={draft} onChange={changes => { setDraft({ ...draft, ...changes }); setFailure(null); }} entities={entities} members={members} timezone={timezone} />
+      <TaskFields value={draft} onChange={changes => { setDraft({ ...draft, ...changes }); setFailure(null); }} entities={entities} members={members} timezone={timezone} onValidityChange={setContentValid} onUpload={files=>uploadFiles(task.householdId,task.id,files)} />
     </fieldset>
+    <ContentPanel householdId={task.householdId} taskId={task.id} userId={userId} members={members} />
   </Dialog>;
 }

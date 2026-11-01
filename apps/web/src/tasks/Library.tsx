@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, ArrowDown, Plus } from 'lucide-react';
@@ -8,11 +8,12 @@ import { Dialog } from '../components/ui/dialog.js';
 import { IconPicker } from './IconPicker.js';
 import { PlaceLocation } from './PlaceLocation.js';
 import { EntityIcon, epicStyle } from './identity.js';
-export function Library({ householdId, entities, admin }: { householdId: string; entities: Entity[]; admin: boolean }) {
+export function Library({ householdId, entities, admin, initialEntityId }: { initialEntityId?:string|null; householdId: string; entities: Entity[]; admin: boolean }) {
   const { t } = useTranslation();
   const queries = useQueryClient();
   const [kind, setKind] = useState<EntityKind>('epic');
   const [editing, setEditing] = useState<Entity | 'new' | null>(null);
+  useEffect(()=>{const selected=entities.find(e=>e.id===initialEntityId);if(selected){setKind(selected.kind);setEditing(selected);}},[initialEntityId]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   async function run(action: () => Promise<unknown>) {

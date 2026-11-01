@@ -18,6 +18,7 @@ const mail = new MailService(db, config.APP_ENCRYPTION_KEY, config.PUBLIC_ORIGIN
   await boss.send('account-mail', payload, { retryLimit: 3, retryDelay: 30, expireInSeconds: 60 });
 });
 const app = await buildApp({
+  attachmentRoot: config.ATTACHMENT_ROOT, attachmentLimit: config.ATTACHMENT_MAX_BYTES,
   version: config.APP_VERSION, logLevel: config.LOG_LEVEL, accounts: { service, mail },
   closeDatabase: async () => { await boss.stop(); await pool.end(); },
   checkDatabase: async () => { await pool.query('SELECT 1'); },

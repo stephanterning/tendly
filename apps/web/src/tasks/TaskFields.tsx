@@ -1,9 +1,10 @@
+import { RichEditor } from '../content/RichEditor.js';
 import { columns, sizes, type TaskFields as Fields, type Entity } from '@tendly/shared';
 import { useTranslation } from 'react-i18next';
 export type Member = { id: string; name: string; email: string; role: 'admin' | 'member' };
 export const emptyTask: Fields = { title: '', description: '', column: 'someday', epicId: null, high: false, size: null, estimateMinutes: null, startDate: null, startTime: null, deadlineDate: null, deadlineTime: null, assignees: [], places: [], resources: [], tags: [] };
-export function TaskFields({ value, onChange, entities, members, timezone }: {
-  value: Fields; onChange: (changes: Partial<Fields>) => void; entities: Entity[]; members: Member[]; timezone: string;
+export function TaskFields({ value, onChange, entities, members, timezone, onUpload, onValidityChange }: {
+  value: Fields; onChange: (changes: Partial<Fields>) => void; entities: Entity[]; members: Member[]; timezone: string; onValidityChange?: (valid:boolean)=>void; onUpload?: (files:File[])=>Promise<{src:string;name:string;image:boolean}[]>;
 }) {
   const { t } = useTranslation();
   return <>
@@ -15,7 +16,7 @@ export function TaskFields({ value, onChange, entities, members, timezone }: {
       <label>{t('size')}<select value={value.size ?? ''} onChange={e => onChange({ size: e.target.value ? e.target.value as Fields['size'] : null })}><option value="">{t('none')}</option>{sizes.map(s => <option key={s}>{s}</option>)}</select></label>
       <label className="check-label"><input type="checkbox" checked={value.high} onChange={e => onChange({ high: e.target.checked })} />{t('high')}</label>
     </div>
-    <label>{t('description')}<textarea rows={3} value={value.description} onChange={e => onChange({ description: e.target.value })} /></label>
+    <div><p className="field-label">{t('description')}</p><RichEditor value={value.description} onChange={description=>onChange({description})} label={t('description')} members={members} {...onValidityChange?{onValidityChange}:{}} {...onUpload?{onUpload}:{}} /></div>
     <details className="properties" open={value.assignees.length > 0 || undefined}><summary>{t('assignees')}{value.assignees.length ? ' · ' + value.assignees.length : ''}</summary><div className="choice-list">{members.map(member => <label className="check-label" key={member.id}><input type="checkbox" checked={value.assignees.includes(member.id)} onChange={e => onChange({ assignees: e.target.checked ? [...value.assignees, member.id].sort() : value.assignees.filter(id => id !== member.id) })} />{member.name}</label>)}</div></details>
     <details className="properties" open={!!value.startDate || !!value.deadlineDate || undefined}><summary>{t('dates')}</summary><p className="small muted">{t('dateZone', { zone: timezone })}</p>
       <div className="form-grid"><label>{t('startDate')}<input type="date" value={value.startDate ?? ''} onChange={e => onChange({ startDate: e.target.value || null, ...(e.target.value ? {} : { startTime: null }) })} /></label><label>{t('startTime')}<input type="time" disabled={!value.startDate} value={value.startTime ?? ''} onChange={e => onChange({ startTime: e.target.value || null })} /></label></div>
