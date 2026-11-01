@@ -9,7 +9,7 @@ import { defined } from '../tasks/api.js';
 import { Dialog } from '../components/ui/dialog.js';
 import { EntityIcon, epicStyle } from '../tasks/identity.js';
 import { FilterEditor, ViewEditor } from './Editors.js';
-import { filterName } from './api.js';
+import { filterName, viewName } from './api.js';
 export function QuickBar({
   householdId,
   view,
@@ -26,6 +26,7 @@ export function QuickBar({
   const { t } = useTranslation(),
     queries = useQueryClient();
   const state = catalog.states[view.id] ?? { version: 0, activeFilters: [], favorite: false };
+  const [createdFilter, setCreatedFilter] = useState<SavedFilter | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const [menu, setMenu] = useState<SavedFilter | null>(null),
@@ -135,7 +136,7 @@ export function QuickBar({
           </button>
         )}
       </div>
-      <div className="view-secondary-controls">
+      <details className="view-secondary"><summary>{t('viewOptions')}{catalog.context.currentPlaceId ? ' · ' + (entities.find(e => e.id === catalog.context.currentPlaceId)?.name ?? '') : ''}</summary><div className="view-secondary-controls">
         <label className="current-place">
           <span>{t('currentPlace')}</span>
           <select
@@ -169,12 +170,30 @@ export function QuickBar({
           <Settings2 size={18} />
           {t('viewOptions')}
         </button>
-      </div>
+      </div></details>
       {error && (
         <p role="alert" className="alert error">
           {t(error)}
         </p>
       )}
+      {createdFilter && <Dialog open onReturnFocus={() => requestAnimationFrame(() => {
+        const chip = [...document.querySelectorAll<HTMLButtonElement>('.quick-filter-bar button')].find(button => button.textContent === filterName(createdFilter, t));
+        (chip ?? document.querySelector<HTMLButtonElement>('.quick-filter-bar .icon-button'))?.focus({ preventScroll: true });
+      })} title={t('filterSaved')} onOpenChange={open => { if (!open && !busy) setCreatedFilter(null); }}>
+        <p>{t('addFilterToViewHelp', { filter: filterName(createdFilter, t), view: viewName(view, t) })}</p>
+        {error && <p role="alert">{t(error)}</p>}
+        <div className="button-row">
+          <button className="primary" disabled={busy} onClick={() => void run(async () => {
+            const latest = catalog.views.find(v => v.id === view.id) ?? view;
+            await result(api.PUT('/api/v1/households/{householdId}/views/{id}', {
+              params: { path: { householdId, id: view.id } },
+              body: { baseVersion: latest.version, changes: defined({ ...latest, quickFilters: [...new Set([...latest.quickFilters, createdFilter.id])] }) },
+            }));
+            setCreatedFilter(null);
+          })}>{t('addToThisView')}</button>
+          <button disabled={busy} onClick={() => setCreatedFilter(null)}>{t('notNow')}</button>
+        </div>
+      </Dialog>}
       {choosing && (
         <Dialog
           open
@@ -275,6 +294,7 @@ export function QuickBar({
           filter={editing.filter}
           duplicate={editing.duplicate ?? false}
           viewId={view.id}
+          onCreated={filter => { setEditing(null); setCreatedFilter(filter); }}
           onClose={() => setEditing(null)}
         />
       )}

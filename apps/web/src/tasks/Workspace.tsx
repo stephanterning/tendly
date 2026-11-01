@@ -1,3 +1,5 @@
+import { NavigationContext, useWorkspaceNavigation } from '../navigation/Navigation.js';
+import { routeUrl, type WorkspaceView } from '../navigation/routes.js';
 import { useViewCatalog, viewName } from '../views/api.js';
 import { QuickBar } from '../views/QuickBar.js';
 import { ViewLibrary } from '../views/Library.js';
@@ -51,15 +53,14 @@ export function Workspace({
 }) {
   const { t } = useTranslation();
   const queries = useQueryClient();
-  const [householdId, setHouseholdId] = useState(account.households[0]?.id ?? '');
-  const household = account.households.find((h) => h.id === householdId) ?? account.households[0];
+  const { route, navigation: router } = useWorkspaceNavigation(account.households[0]?.id ?? '', !!link);
+  const household = account.households.find((h) => h.id === route.household);
+  const view = route.view, customViewId = route.custom, selected = route.task;
+  const setView = (view: WorkspaceView) => router.navigate({ view, task: '', comment: '', match: '' });
+  const setSelected = (task: string | null) => task ? router.navigate({ task, comment: '', match: '' }) : router.closeTask();
   const id = household?.id ?? '';
   useHouseholdEvents(id);
-  const [view, setView] = useState<
-    'now' | 'board' | 'more' | 'library' | 'settings' | 'search' | 'custom' | 'views'
-  >(link ? 'settings' : 'now');
   const [collapsed, setCollapsed] = useState(false);
-  const [customViewId, setCustomViewId] = useState<string | null>(null);
   const catalog = useViewCatalog(id);
   const activeView = catalog.data?.views.find(
     (v) => !v.deleted && (view === 'custom' ? v.id === customViewId : v.builtin === view),
@@ -73,7 +74,6 @@ export function Workspace({
   const [capture, setCapture] = useState<TaskColumn | null>(null);
   const [confirmStart, setConfirmStart] = useState<Task | null>(null);
   const [librarySelection, setLibrarySelection] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [notice, setNotice] = useState(''),
     [error, setError] = useState('');
@@ -81,8 +81,8 @@ export function Workspace({
   const [redo, setRedo] = useState<HistoryEntry[]>([]);
   const mutationBusy = useRef(false);
   useEffect(() => {
-    if (link) setView('settings');
-  }, [link]);
+    if (link) router.navigate({ view: 'settings', task: '' });
+  }, [link, router]);
   const entities = useQuery({
     queryKey: ['planning', id, 'entities'],
     enabled: !!id,
@@ -118,6 +118,14 @@ export function Workspace({
       ),
     refetchInterval: 30_000,
   });
+  const householdTasks = useQuery({
+    queryKey: ['planning', id, 'has-tasks'],
+    enabled: !!id && !!list.data && !list.data.pages.some(page => page.items.length),
+    queryFn: () => result(api.GET('/api/v1/households/{householdId}/tasks', {
+      params: { path: { householdId: id }, query: { view: 'board', limit: 1 } },
+    })),
+  });
+  const activeFilters = activeView ? catalog.data?.states[activeView.id]?.activeFilters ?? [] : [];
   const detail = useQuery({
     queryKey: ['planning', id, 'task', selected],
     enabled: !!id && !!selected,
@@ -142,7 +150,7 @@ export function Workspace({
     if (changes.estimateMinutes !== undefined && next.size !== base.size) inverse.size = base.size;
     setHistory((old) => [...old.slice(-19), { current: next, inverse, forward: changes }]);
     setRedo([]);
-    await saved(next);
+    void saved(next);
     return next;
   }
   async function toggle(task: Task, confirmed = false) {
@@ -283,6 +291,7 @@ export function Workspace({
   }
   useEffect(() => {
     function key(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && id) {
         event.preventDefault();
         setView('search');
@@ -312,14 +321,19 @@ export function Workspace({
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
   });
+  function returnToTaskLink() {
+    requestAnimationFrame(() => {
+      const link = [...document.querySelectorAll<HTMLAnchorElement>('.workspace-main a[href]')].find(a => new URL(a.href).searchParams.get('task') === selected);
+      (link ?? document.querySelector<HTMLElement>('.workspace-main'))?.focus({ preventScroll: true });
+    });
+  }
   const navigation = [
     { key: 'now', icon: House },
     { key: 'board', icon: LayoutGrid },
     { key: 'more', icon: MoreHorizontal },
   ] as const;
   function switchHousehold(value: string) {
-    setHouseholdId(value);
-    setSelected(null);
+    router.navigate({ household: value, view: 'now', custom: '', task: '', q: '', filters: [], comment: '', match: '' });
     setLibrarySelection(null);
     setCapture(null);
     setHistory([]);
@@ -327,10 +341,10 @@ export function Workspace({
     setNotice('');
     setError('');
     setMoveUndo(null);
-    setCustomViewId(null);
-    setView('now');
+
   }
   return (
+    <NavigationContext.Provider value={router}>
     <div className={'workspace ' + (collapsed ? 'nav-collapsed' : '')}>
       <aside className="workspace-nav">
         <div className="brand">
@@ -376,8 +390,7 @@ export function Workspace({
                 key={v.id}
                 aria-current={activeView?.id === v.id ? 'page' : undefined}
                 onClick={() => {
-                  setCustomViewId(v.id);
-                  setView('custom');
+                  router.navigate({ custom: v.id, view: 'custom', task: '' });
                 }}
               >
                 <EntityIcon name={v.icon} />
@@ -483,16 +496,24 @@ export function Workspace({
                 {t(w)}
               </p>
             ))}
+            {!list.isPending && !list.isError && activeView && items.length === 0 && <div className="empty-state">
+              <p>{t(householdTasks.data?.items.length === 0 ? 'firstTaskHelp' : activeFilters.length || view === 'custom' ? 'noFilterMatches' : view === 'now' ? 'noTasksNow' : 'noTasksHere')}</p>
+              {householdTasks.data?.items.length === 0 ? <button className="primary" onClick={() => { setCaptureEpic(null); setCapture('someday'); }}>{t('newTask')}</button>
+                : view === 'now' && <button onClick={() => setView('board')}>{t('board')}</button>}
+            </div>}
             {list.isPending && activeView ? (
               <p role="status">{t('loading')}</p>
             ) : (
-              activeView && (
+              activeView && !list.isError && (
                 <TaskPresentation
                   items={items}
                   view={activeView}
                   entities={entities.data ?? []}
                   members={members.data ?? []}
                   open={(task) => setSelected(task.id)}
+                  column={route.column}
+                  setColumn={column => router.navigate({ column }, true)}
+                  taskHref={task => routeUrl({ ...route, task: task.id, comment: '', match: '' })}
                   complete={(task) => void toggle(task)}
                   create={(c, epic) => {
                     setCaptureEpic(epic ?? null);
@@ -526,8 +547,7 @@ export function Workspace({
                   <button
                     key={v.id}
                     onClick={() => {
-                      setCustomViewId(v.id);
-                      setView('custom');
+                      router.navigate({ custom: v.id, view: 'custom', task: '' });
                     }}
                   >
                     <EntityIcon name={v.icon} />
@@ -566,15 +586,16 @@ export function Workspace({
             entities={entities.data ?? []}
             members={members.data ?? []}
             onOpen={(viewId) => {
-              setCustomViewId(viewId);
-              setView('custom');
+              router.navigate({ custom: viewId, view: 'custom', task: '' });
             }}
           />
         )}
         {view === 'search' && id && (
           <Search
             householdId={id}
-            openTask={setSelected}
+            route={route}
+            onSearch={(q, filters) => router.navigate({ q, filters }, true)}
+            openTask={(task, comment, match) => router.navigate({ task, comment, match })}
             openLibrary={(entityId) => {
               setLibrarySelection(entityId);
               setView('library');
@@ -698,7 +719,7 @@ export function Workspace({
           </button>
         </Dialog>
       )}
-      {selected && detail.isError && (
+      {selected && (!household || !detail.data) && (
         <Dialog
           open
           onOpenChange={(open) => {
@@ -706,13 +727,17 @@ export function Workspace({
           }}
           title={t('taskDetails')}
         >
-          <p role="alert">{t('task_not_found')}</p>
-          <button onClick={() => void detail.refetch()}>{t('retry')}</button>
+          <p role={detail.isPending && household ? 'status' : 'alert'}>{t(!household ? 'noMembership' : detail.isPending ? 'loading' : detail.error?.message === 'task_not_found' ? 'task_not_found' : 'network_error')}</p>
+          {household && detail.isError && <button onClick={() => void detail.refetch()}>{t('retry')}</button>}
+          <button onClick={() => router.closeTask()}>{t('backToTasks')}</button>
         </Dialog>
       )}
       {selected && detail.data && household && (
         <TaskEditor
           userId={account.id}
+          onReturnFocus={returnToTaskLink}
+          searchMatch={route.match}
+          commentId={route.comment}
           key={detail.data.id}
           task={detail.data}
           entities={entities.data ?? []}
@@ -726,6 +751,7 @@ export function Workspace({
         />
       )}
     </div>
+    </NavigationContext.Provider>
   );
 }
 function Capture({
@@ -783,7 +809,7 @@ function Capture({
             onChange={(e) => setValue({ ...value, title: e.target.value })}
           />
           <p className="capture-context small muted">
-            {t('column')} · {t('column_' + column)}
+            {t('column')} · {t('column_' + value.column)}
           </p>
           {error && (
             <p role="alert" className="alert error">
