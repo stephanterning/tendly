@@ -140,7 +140,7 @@ export async function registerContentRoutes(
     '/api/v1/households/:householdId/tasks/:taskId/attachments',
     {
       config: { fileUpload: true },
-      schema: { params: task, response: { 200: attachmentSchema } },
+      schema: { params: task, headers: z.object({ 'x-upload-id': z.uuid().optional() }), response: { 200: attachmentSchema } },
       preHandler: async (r) => {
         await service.task(await actor(r), r.params.householdId, r.params.taskId);
       },
@@ -148,7 +148,7 @@ export async function registerContentRoutes(
     async (r) => {
       const part = await r.file();
       if (!part) throw new AccountError('empty_file');
-      return files.upload(await actor(r), r.params.householdId, r.params.taskId, part);
+      return files.upload(await actor(r), r.params.householdId, r.params.taskId, part, r.headers['x-upload-id']);
     },
   );
   for (const mode of ['download', 'preview', 'thumbnail'] as const) {
