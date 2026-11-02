@@ -62,7 +62,7 @@ export async function searchContent(
           )
             continue;
           if (matched++ >= offset)
-            items.push(searchHitSchema.parse({ ...row, snippet: text.slice(0, 250) }));
+            items.push(searchHitSchema.parse({ ...row, snippet: searchSnippet(text, needle) }));
           if (items.length === 51) break;
         }
         if (batch.rows.length < 256) break;
@@ -76,4 +76,9 @@ export async function searchContent(
     },
     { isolationLevel: 'repeatable read', accessMode: 'read only' },
   );
+}
+
+function searchSnippet(text: string, needle: string) {
+  const start = Math.max(0, text.toLowerCase().indexOf(needle) - 70);
+  return (start ? '…' : '') + text.slice(start, start + 250) + (start + 250 < text.length ? '…' : '');
 }

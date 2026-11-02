@@ -112,6 +112,7 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await page.getByRole('button', { name: new RegExp(run + ' ready.*Alex') }).click();
   await dialog.getByLabel('Filter name', { exact: true }).fill('Discard this');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Discard changes and leave', exact: true }).click();
   await expect(page.getByRole('button', { name: new RegExp(run + ' ready.*Alex') })).toBeVisible();
   await page.getByRole('button', { name: 'Views', exact: true }).click();
   await page.getByRole('button', { name: 'New view', exact: true }).click();
@@ -131,8 +132,22 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await expect(page.getByRole('heading', { name: `${run} board`, exact: true })).toBeVisible();
   await expect(page.locator('.epic-lane>summary').last()).toContainText('Unassigned');
   await page.getByRole('button', { name: `${run} ready`, exact: true }).click();
-  await expect(page.getByRole('button', { name: `${run} large`, exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: `${run} small`, exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: `${run} large`, exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: `${run} small`, exact: true })).toBeVisible();
+  // A definition dialog must close after approving Forward to a task, even
+  // though its underlying view stays mounted.
+  await page.getByRole('link', { name: `${run} small`, exact: true }).click();
+  await page.getByRole('button', { name: 'Back to tasks', exact: true }).click();
+  await page.locator('.view-secondary>summary').click();
+  await page.getByRole('button', { name: 'View settings', exact: true }).click();
+  await page.getByLabel('View name', { exact: true }).fill('Unsaved view');
+  await page.goForward();
+  await page.getByRole('button', { name: 'Discard changes and leave', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+  await expect(page.getByRole('dialog', { name: 'Task details', exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
   await page.reload();
   await page
     .getByRole('navigation', { name: 'Views', exact: true })
@@ -157,7 +172,7 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
     'aria-pressed',
     'false',
   );
-  await expect(member.getByRole('button', { name: `${run} large`, exact: true })).toBeVisible();
+  await expect(member.getByRole('link', { name: `${run} large`, exact: true })).toBeVisible();
   // Shared editing propagates, while the other member's toggle remains off.
   await page.getByRole('button', { name: `${run} ready`, exact: true }).focus();
   await page.keyboard.press('Shift+F10');
@@ -176,12 +191,12 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await page.getByRole('button', { name: `${run} ready`, exact: true }).click();
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.bringToFront();
-  await expect(page.getByRole('button', { name: `${run} large`, exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: `${run} large`, exact: true })).toBeVisible();
 
   await drag(
     page,
     page.getByRole('button', { name: `Move task · ${run} large`, exact: true }),
-    page.getByRole('button', { name: `${run} small`, exact: true }),
+    page.getByRole('link', { name: `${run} small`, exact: true }),
   );
   const ordered = () =>
     page
@@ -202,9 +217,9 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
     page.getByRole('button', { name: `Move task · ${run} large`, exact: true }),
     unassigned
       .locator('.board-column')
-      .filter({ has: page.getByRole('heading', { name: 'Within a Month', exact: true }) }),
+      .filter({ has: page.getByRole('heading', { name: /^Within a Month/ }) }),
   );
-  await expect(unassigned.getByRole('button', { name: `${run} large`, exact: true })).toBeVisible();
+  await expect(unassigned.getByRole('link', { name: `${run} large`, exact: true })).toBeVisible();
   await page
     .locator('.history-controls')
     .getByRole('button', { name: 'Undo', exact: true })
@@ -218,7 +233,7 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await md.getByRole('button', { name: 'Move task', exact: true }).click();
   await expect(md).toHaveCount(0);
   await member.getByRole('combobox', { name: 'Column', exact: true }).selectOption('within_month');
-  await expect(member.getByRole('button', { name: `${run} small`, exact: true })).toBeVisible();
+  await expect(member.getByRole('link', { name: `${run} small`, exact: true })).toBeVisible();
   expect(await member.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
     true,
   );
@@ -234,7 +249,7 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await lane.getByRole('button', { name: 'Add task · Within a Month', exact: true }).click();
   await dialog.getByLabel('What needs doing?', { exact: true }).fill(`${run} contextual`);
   await dialog.getByRole('button', { name: 'Add task', exact: true }).click();
-  await expect(lane.getByRole('button', { name: `${run} contextual`, exact: true })).toBeVisible();
+  await expect(lane.getByRole('link', { name: `${run} contextual`, exact: true })).toBeVisible();
   const all = (await (await page.request.get(prefix + '/tasks?limit=100')).json()).items;
   expect(all.find((task: { title: string }) => task.title === `${run} contextual`)).toMatchObject({
     column: 'within_month',
@@ -242,6 +257,7 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   });
   // Pace the next phase instead of relaxing the production account rate limit.
   await page.waitForTimeout(Math.max(0, 61000 - (Date.now() - started)));
+  if ((await page.locator('.view-secondary').getAttribute('open')) === null) await page.locator('.view-secondary>summary').click();
   await page.getByRole('button', { name: 'View settings', exact: true }).click();
   await dialog.getByRole('combobox', { name: 'Presentation', exact: true }).selectOption('list');
   await dialog.getByRole('combobox', { name: 'Sorting', exact: true }).selectOption('effort');

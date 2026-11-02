@@ -57,6 +57,10 @@ Collapsible left navigation with Now, Board, favorite shared views, search and s
 
 Both form factors share the same underlying view/filter/task behavior; switching devices must not change the underlying data. Navigation favorites and active filter toggles are personal, while view/filter definitions are shared.
 
+Workspaces and tasks have bookmarkable addresses scoped to a household. Task cards and task search results are native links, supporting a new tab and copying the address. Opening a task preserves its underlying view, search text/filters and selected board column. Back/Forward and the task's Back action respect the same autosave/draft guard; cancelling navigation preserves both the document and its address. Closing a direct link with no originating workspace stays within the app. Return focus to the originating task/search link when it remains available.
+
+Comment search results open and focus the matching comment, loading additional comment pages if necessary. Description matches scroll into view and use presentation-only highlights, never rich-text changes. Search snippets include the matching passage. Missing comments and unavailable tasks have explicit feedback and a way back.
+
 ## 4. Task cards
 
 A default compact card should expose only the fields that help someone decide/act:
@@ -81,6 +85,7 @@ The home screen is a **vertical task list**, not a board, KPI panel or agenda ca
 - Render a horizontal **view-specific quick-filter chip bar** above tasks. Chips are saved filters, not hardcoded property dropdowns. Multiple active chips narrow via AND.
 - Show a compact location selector when the user wants to set their current place (manual in v1.0); location does not filter tasks unless an explicit base/quick filter uses it.
 - Support simple sensible empty states: *no actionable tasks* versus *filters have zero matches*; show active chips and a clear reset action.
+- When the household has no current tasks, invite the user to create the first one. An empty Now view with other tasks offers Board. Keep view settings and manual place selection in a secondary disclosure; show the selected place in its summary.
 - Keep create-task easy to reach regardless of scroll position.
 
 ## 6. Board and saved views
@@ -91,6 +96,8 @@ The board has **exactly six** visible column choices, translated by locale: Some
 
 **Desktop:** multiple columns side by side, horizontal overflow on smaller desktops, drag between columns and optional epic swimlanes. **Mobile:** exactly one active column shown at once, with swipe between columns **and** a direct column selector. With epic grouping, use collapsible sections within the active mobile column; desktop lanes are collapsible horizontal swimlanes. Global epic ordering applies everywhere. The Unassigned epic lane is last, empty lanes hidden unless that view requests them.
 
+At tablet widths up to 1024px, use the single-column board with a direct selector and compact navigation. Column choices display counts for the currently loaded results; they do not claim to count unloaded pages. The selected column is retained in the workspace address.
+
 A view can be **Board** or **List** and records base filter, selected quick-filter chips, sorting (manual/default, deadline, High, effort, created date), epic lanes on/off, empty-lane visibility, visible card properties and subtask-as-card mode. Only group by epic; assignee/place are filter predicates, not lanes. All views are shared; users personally favorite views for their navigation.
 
 Built-in Now/Board views are editable and resettable but not deletable. View editing should show shared impact and support a restore-default command for built-ins.
@@ -100,6 +107,8 @@ Built-in Now/Board views are editable and resettable but not deletable. View edi
 ### Quick-filter bar
 
 A horizontal, scrollable set of **saved filter chips**, specific to the active view. A tap/click toggles. Selected chips remain active across sessions for **that user and that view**. A `+` opens the shared filter library / create flow. Right-click or long-press opens Edit, Duplicate and Delete. Ensure buttons work equally well on touch and keyboard. Do not invent permanent `All / Now` segmented controls inconsistent with the underlying saved filter model.
+
+After creating a filter from this bar, offer an explicit **Add to this view** action. Saving the definition and attaching it to a view are separate, recoverable operations; other views and personal active toggles remain unchanged. Closing, cancelling or navigating away from an edited filter/view asks whether to keep editing or discard the unsaved changes. Reload/close warns about these in-memory drafts; unlike task recovery copies, filter/view drafts are not persisted across reloads. Dialog replacement must move focus into the new dialog.
 
 ### Visual filter builder
 
@@ -114,9 +123,15 @@ Use nested groups and typed controls for AND/OR/NOT, field choice, operator and 
 
 ### Details layout
 
-**Desktop:** right-side panel, board/list remains in context. **Mobile:** full-screen task details with an obvious Back action. Edit values in place; keep advanced values collapsed or categorized without hiding essential state.
+**Desktop:** expandable right-side panel, board/list remains in context. Open in the expanded writing view; allow switching to a compact side panel without remounting the editor or losing the current draft. **Mobile:** full-screen task details with an obvious Back action. Edit values in place; keep advanced values collapsed or categorized without hiding essential state.
 
-Suggested information flow: **title and completion / column / epic / priority checkbox / effort size**, then assignees, optional dates, place/resource/tag chips and dependencies, then rich description, nested subtasks, attachments and a bottom area with **Comments** and **Activity** as separate tabs. Present inherited values as inherited, offer per-property override controls, and distinguish intentionally excluded inherited multi-values. Users should be able to return to inheriting.
+**Owner-approved content-first layout, 2026-11-01:** the title leads into the rich description as a living document for ideas, links, decisions, small checklists and inline inspiration images. In the expanded desktop view, planning properties occupy a secondary right column. In the compact panel and on mobile, a collapsed planning summary above the description shows column, size, epic, High when set and deadline when set; expanding it exposes the same property controls. Validation errors reveal the relevant planning controls. Titles grow to fit rather than clipping long task names.
+
+The rich-text toolbar keeps **Bold, Italic, Checklist, Image and Link** directly accessible, with other formatting and mentions under **More formatting**. On narrow screens, labelled icons keep the primary row compact with 44px touch targets. Active formatting follows the selection. Enter continues a checklist; Enter on an empty item returns to a paragraph. Existing Markdown shortcuts remain available. Normal autosave acknowledgements preserve selection, cursor, scroll and local undo history.
+
+Clicking a link in editable content, or pressing Cmd/Ctrl+K inside the editor, opens link options. Opening the saved address in a new tab is separate from editing its address or removing the link while retaining its text. Cancelling returns focus to the editor without changing content. Outside the editor, Cmd/Ctrl+K remains global search. Descriptions and comments share these editing controls.
+
+Images in the document can be enlarged, and attachments appear in a thumbnail gallery below the description, with preview, image navigation and original download. Multiple selections, pasted images and file drops use a per-file queue with transfer progress, preview-processing state and individual retry/dismiss actions. Successful files continue after a failed file; completed attempts collapse into a summary. Delayed images keep their mapped insertion positions and batch order while the user writes elsewhere. If that position is removed, keep the uploaded file in the gallery and offer explicit insertion at a newly chosen cursor position. Removing an inline image keeps its original; gallery images can be inserted again without another upload. Unfinished entries must be retried or dismissed before closing the task or submitting/switching the affected comment editor. **Comments** and **Activity** remain separate tabs below the task content. Checklist items inside a description remain part of that document, distinct from full subtasks. Present inherited values as inherited when hierarchy is implemented, offer per-property override controls, and distinguish intentionally excluded inherited multi-values. Users should be able to return to inheriting.
 
 A task's **High** input is a single checkbox/toggle, not a three-level picker. Place names are physical locations such as Grankottevägen 30 and Sandvreten; generic Outdoors should be a tag. Size (XS–XL) remains the primary estimate signal; exact hours/minutes live deeper in details.
 
@@ -127,6 +142,10 @@ Global `+` or desktop `N`, immediate title-entry, Enter to create. Without conte
 ### Editing behavior
 
 Normal fields use autosave. Indicate pending/saved/failed subtly; allow retry and avoid losing text. Provide Undo/Redo for meaningful recent changes, mobile Undo toast after completion/move/delete, and a conflict dialog only for actual conflicting concurrent field edits. Ordinary drag and drop is undoable; do not force confirmation unless the action is consequential (blocked start, later child deadline warning, finishing parent with incomplete descendants, dependency-affecting deletion, etc.).
+
+Task autosave serializes pending edits: closing waits for changes made while an earlier save was in flight. Empty-title and estimate errors appear at their fields. If saving fails, the user can continue editing or keep an explicit recovery draft and close; known unsaved changes may also be discarded. Recovery copies are scoped to the user, household and task in the current browser tab (`sessionStorage`), survive reload, and require review before saving resumes. They are not offline synchronization and are not guaranteed after closing the browser tab. If recovery storage is unavailable, say so rather than claiming a copy was kept.
+
+A task write times out after 12 seconds. A timeout/lost response leaves the outcome uncertain: retry reads the saved version first and uses the original guarded revision if the request needs repeating. Discard is unavailable until an uncertain request is reconciled; keeping the draft and closing remains available. Same-field conflicts show both the local and saved content, including formatted descriptions and copyable text. Accepting the latest version replaces only the conflicting logical fields (date and time form one field), preserving other local edits. Users can combine content in the editor before applying their version. Pending content uploads/comment operations prevent closing the task before the operation completes.
 
 ### Subtasks
 

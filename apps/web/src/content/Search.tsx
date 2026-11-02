@@ -1,3 +1,4 @@
+import { routeUrl, type Route } from '../navigation/routes.js';
 import { useViewCatalog, filterName } from '../views/api.js';
 import { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -6,17 +7,20 @@ import { api, result } from '../accounts/api.js';
 export function Search({
   householdId,
   openTask,
-  openLibrary,
+  openLibrary, route, onSearch,
 }: {
   householdId: string;
-  openTask: (id: string) => void;
+  openTask: (id: string, comment: string, match: string) => void;
+  route: Route;
+  onSearch: (q: string, filters: string[]) => void;
   openLibrary: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const catalog = useViewCatalog(householdId);
-  const [filterIds, setFilterIds] = useState<string[]>([]);
-  const [input, setInput] = useState(''),
-    [q, setQ] = useState('');
+  const filterIds = route.filters, input = route.q;
+  const setFilterIds = (ids: string[]) => onSearch(input, ids);
+  const setInput = (text: string) => onSearch(text, filterIds);
+  const [q, setQ] = useState(input.trim());
   useEffect(() => {
     const timer = setTimeout(() => setQ(input.trim()), 250);
     return () => clearTimeout(timer);
@@ -93,15 +97,17 @@ export function Search({
       <ul className="search-results">
         {search.data?.pages
           .flatMap((p) => p.items)
-          .map((hit) => (
-            <li key={hit.kind + hit.id}>
-              <button onClick={() => (hit.taskId ? openTask(hit.taskId) : openLibrary(hit.id))}>
-                <small>{t(hit.kind)}</small>
-                <strong>{hit.title}</strong>
-                <span>{hit.snippet}</span>
-              </button>
-            </li>
-          ))}
+          .map((hit) => {
+            const content = <><small>{t(hit.kind)}</small><strong>{hit.title}</strong><span>{hit.snippet}</span></>;
+            return <li key={hit.kind + hit.id}>
+              {hit.taskId ? <a href={routeUrl({ ...route, task: hit.taskId, comment: hit.kind === 'comment' ? hit.id : '', match: q })}
+                onClick={event => {
+                  if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                  event.preventDefault();
+                  openTask(hit.taskId!, hit.kind === 'comment' ? hit.id : '', q);
+                }}>{content}</a> : <button onClick={() => openLibrary(hit.id)}>{content}</button>}
+            </li>;
+          })}
       </ul>
       {search.hasNextPage && (
         <button disabled={search.isFetchingNextPage} onClick={() => void search.fetchNextPage()}>

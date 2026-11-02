@@ -18,6 +18,8 @@ export function TaskPresentation({
   entities,
   members,
   open,
+  taskHref,
+  column, setColumn,
   complete,
   create,
   move,
@@ -27,16 +29,17 @@ export function TaskPresentation({
   entities: Entity[];
   members: Member[];
   open: (task: Task) => void;
+  taskHref: (task: Task) => string;
+  column: TaskColumn; setColumn: (column: TaskColumn) => void;
   complete: (task: Task) => void;
   create: (column: TaskColumn, epicId?: string | null) => void;
   move: (task: Task, changes: Move) => Promise<void>;
 }) {
   const { t } = useTranslation();
-  const [column, setColumn] = useState<TaskColumn>('todo'),
-    [moving, setMoving] = useState<Task | null>(null);
-  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 720px)').matches);
+  const [moving, setMoving] = useState<Task | null>(null);
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 1024px)').matches);
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 720px)'),
+    const media = window.matchMedia('(max-width: 1024px)'),
       update = () => setMobile(media.matches);
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
@@ -83,6 +86,7 @@ export function TaskPresentation({
         members={members}
         properties={view.cardProperties}
         open={() => open(task)}
+        taskHref={taskHref(task)}
         complete={() => complete(task)}
         onMove={() => setMoving(task)}
         dragStart={(event) => {
@@ -123,13 +127,12 @@ export function TaskPresentation({
           <select value={column} onChange={(e) => setColumn(e.target.value as TaskColumn)}>
             {columns.map((c) => (
               <option key={c} value={c}>
-                {t('column_' + c)}
+                {t('column_' + c)} ({items.filter(task => task.column === c).length})
               </option>
             ))}
           </select>
         </label>
       )}
-      {!items.length && <p className="empty-state">{t('noFilterMatches')}</p>}
       <div
         className="task-presentation"
         onTouchStart={(e) => {
@@ -186,7 +189,7 @@ export function TaskPresentation({
                     })}
                   >
                     <header>
-                      <h2>{t('column_' + c)}</h2>
+                      <h2>{t('column_' + c)} <span className="muted">{laneItems.filter(task => task.column === c).length}</span></h2>
                       <button
                         className="quiet icon-button"
                         aria-label={t('addTask') + ' · ' + t('column_' + c)}
@@ -346,6 +349,7 @@ function TaskCard({
   members,
   properties,
   open,
+  taskHref,
   complete,
   onMove,
   dragStart,
@@ -356,6 +360,7 @@ function TaskCard({
   members: Member[];
   properties: SavedView['cardProperties'];
   open: () => void;
+  taskHref: string;
   complete: () => void;
   onMove: () => void;
   dragStart: (event: React.DragEvent) => void;
@@ -381,7 +386,10 @@ function TaskCard({
       >
         <GripVertical size={16} />
       </button>
-      <button className="card-open" onClick={open} aria-label={task.title}>
+      <a className="card-open" href={taskHref} aria-label={task.title} onClick={event => {
+        if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault(); open();
+      }}>
         {epic && show('epic') && (
           <span className="card-icon">
             <EntityIcon name={epic.icon} size={26} />
@@ -433,7 +441,7 @@ function TaskCard({
             )}
           </span>
         </span>
-      </button>
+      </a>
       <button
         className="card-complete"
         aria-label={t(task.column === 'done' ? 'reopen' : 'complete') + ' · ' + task.title}
