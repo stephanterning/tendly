@@ -35,12 +35,20 @@ CI/development installations.
 ## Upgrades and release images
 
 CI validates contracts, lint/types/build, focused tests, real PostgreSQL migrations,
-and Compose build/restart checks. Version tags `vX.Y.Z` run these checks again before
-publishing amd64/arm64 API/worker/web images to GHCR. No release images have been
-published by Stage 1. Never reuse a released tag; record image digests in release notes.
+and Compose build/restart checks. The Publish images workflow runs these checks
+before publishing amd64/arm64
+API/worker/web images to GHCR on main pushes, version tags `vX.Y.Z`, or manual
+workflow runs. Every build publishes `sha-<full commit SHA>` tags; version-tag
+builds also publish their version and create a GitHub release. All three images
+must use the same source revision. Publishing never triggers a server deployment.
+Confirm all three images finished publishing before deploying, and pin their
+individual digests for reproducible deployments. Package visibility must be public
+for installations to pull without registry credentials. Never reuse a released tag;
+record image digests in release notes.
 Registry owners should restrict package/tag overwrite permissions.
 
-For a future published version, set TENDLY_VERSION to its full tag, pull the images,
+For a published version, set TENDLY_VERSION to its full version or `sha-<SHA>` tag,
+pull the images,
 and run Compose without building. There are no automatic upgrades. Before upgrading,
 back up the database, attachment files and required secrets. Recreate the one-shot
 migration service for each deployment so a previous exited container is not mistaken
