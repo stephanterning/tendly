@@ -45,7 +45,11 @@ Confirm all three images finished publishing before deploying, and pin their
 individual digests for reproducible deployments. Package visibility must be public
 for installations to pull without registry credentials. Never reuse a released tag;
 record image digests in release notes.
-Registry owners should restrict package/tag overwrite permissions.
+Already published commit images are reused on workflow reruns. Version tags are
+assigned to those existing digests; a version that already points elsewhere is
+rejected. Authentication or registry failures stop publication instead of being
+treated as an absent image. Registry owners should also restrict package/tag
+overwrite permissions outside this workflow.
 
 For a published version, set TENDLY_VERSION to its full version or `sha-<SHA>` tag,
 pull the images,
