@@ -35,21 +35,23 @@ CI/development installations.
 ## Upgrades and release images
 
 CI validates contracts, lint/types/build, focused tests, real PostgreSQL migrations,
-and Compose build/restart checks. The Publish images workflow runs these checks
-before publishing amd64/arm64
-API/worker/web images to GHCR on main pushes, version tags `vX.Y.Z`, or manual
-workflow runs. Every build publishes `sha-<full commit SHA>` tags; version-tag
-builds also publish their version and create a GitHub release. All three images
-must use the same source revision. Publishing never triggers a server deployment.
-Confirm all three images finished publishing before deploying, and pin their
-individual digests for reproducible deployments. Package visibility must be public
-for installations to pull without registry credentials. Never reuse a released tag;
-record image digests in release notes.
-Already published commit images are reused on workflow reruns. Version tags are
-assigned to those existing digests; a version that already points elsewhere is
-rejected. Authentication or registry failures stop publication instead of being
-treated as an absent image. Registry owners should also restrict package/tag
-overwrite permissions outside this workflow.
+Compose build/restart checks, and account browser tests. Successful branch pushes
+and manual runs on branches publish the amd64/arm64 API, worker, and web images to
+GHCR as `sha-<full commit SHA>`. Pull requests run the checks without publishing.
+Already published commit images are reused on reruns.
+
+After all three images have been published for a commit, publish a GitHub Release
+or pre-release for that commit, such as `v1.2.3` or `v1.2.3-rc.1`. The release
+workflow assigns the version tag to the three existing digests without rebuilding.
+A Git tag push alone does not publish images. If the release job ran before all
+three images were ready, rerun it after branch CI has finished. The job rejects a
+version tag that already points to a different image. Registry and authentication
+errors fail the job rather than being treated as missing images.
+
+Publishing never triggers a server deployment. Confirm that all three images were
+published and pin their individual digests for reproducible deployments. Public
+packages can be pulled without registry credentials. Restrict package write
+permissions and retain the digests needed for rollback.
 
 For a published version, set TENDLY_VERSION to its full version or `sha-<SHA>` tag,
 pull the images,
