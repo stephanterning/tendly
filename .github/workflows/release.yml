@@ -42,7 +42,8 @@ jobs:
         run: |
           image="${IMAGE,,}"
           echo "name=$image" >> "$GITHUB_OUTPUT"
-          echo "existing=$(sh infrastructure/scripts/image-digest.sh "$image:sha-$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
+          existing=$(sh infrastructure/scripts/image-digest.sh "$image:sha-$GITHUB_SHA")
+          echo "existing=$existing" >> "$GITHUB_OUTPUT"
       - uses: docker/build-push-action@v6
         if: steps.image.outputs.existing == ''
         with:
