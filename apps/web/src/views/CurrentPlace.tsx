@@ -7,7 +7,7 @@ type Fix =
   | { status: 'idle' | 'locating' | 'denied' | 'unavailable' }
   | { status: 'located'; coords: GeolocationCoordinates };
 type Status = Fix['status'] | 'unsupported' | 'unconfigured';
-type CurrentPlace = { id: string | null | undefined; status: Status; request: () => void };
+type CurrentPlace = { id: string | null | undefined; status: Status; request: (restart?: boolean) => void };
 
 export const CurrentPlaceContext = createContext<CurrentPlace | null>(null);
 
@@ -31,8 +31,9 @@ export function useDetectedPlace(entities: Entity[] | undefined): CurrentPlace {
   const [fix, setFix] = useState<Fix>({ status: 'idle' });
   const stopWatching = useRef<(() => void) | null>(null);
 
-  const request = useCallback(() => {
-    if (!geolocation || stopWatching.current) return;
+  const request = useCallback((restart = false) => {
+    if (!geolocation || (stopWatching.current && !restart)) return;
+    stopWatching.current?.();
     let active = true;
     const stop = () => {
       active = false;
@@ -44,8 +45,10 @@ export function useDetectedPlace(entities: Entity[] | undefined): CurrentPlace {
       ({ coords }) => { if (active) setFix({ status: 'located', coords }); },
       (error) => {
         if (!active) return;
-        stop();
-        setFix({ status: error.code === error.PERMISSION_DENIED ? 'denied' : 'unavailable' });
+        const denied = error.code === error.PERMISSION_DENIED;
+        // An existing watch can recover from a temporary failure to get a position.
+        if (denied) stop();
+        setFix({ status: denied ? 'denied' : 'unavailable' });
       },
       { enableHighAccuracy: true, maximumAge: 30_000, timeout: 15_000 },
     );
@@ -89,7 +92,7 @@ export function FilterWarnings({ warnings }: { warnings: string[] | undefined })
     <p role="status" key={warning}>
       {t(warning === 'current_place_unavailable' ? locationMessages[status] : warning)}
       {warning === 'current_place_unavailable' && (status === 'idle' || status === 'denied' || status === 'unavailable') && (
-        <> <button type="button" onClick={request}>{t(status === 'idle' ? 'useMyLocation' : 'retry')}</button></>
+        <> <button type="button" onClick={() => request(status !== 'idle')}>{t(status === 'idle' ? 'useMyLocation' : 'retry')}</button></>
       )}
     </p>
   ));
