@@ -41,6 +41,7 @@ import { patchTask, EditFailure, defined } from './api.js';
 import { Library } from './Library.js';
 
 type HistoryEntry = { current: Task; inverse: TaskChanges; forward: TaskChanges };
+type ViewStateChanges = { activeFilters?: string[]; splitFutureColumns?: boolean };
 export function Workspace({
   account,
   refresh,
@@ -100,15 +101,24 @@ export function Workspace({
   });
   const currentPlace = useDetectedPlace(entities.data);
   const updateViewState = useMutation({
-    mutationFn: (changes: { activeFilters?: string[]; splitFutureColumns?: boolean }) =>
+    mutationFn: ({ householdId, viewId, baseVersion, changes }: {
+      householdId: string;
+      viewId: string;
+      baseVersion: number;
+      changes: ViewStateChanges;
+    }) =>
       result(api.PUT('/api/v1/households/{householdId}/views/{id}/state', {
-        params: { path: { householdId: id, id: activeView!.id } },
-        body: { baseVersion: viewState?.version ?? 0, ...changes },
+        params: { path: { householdId, id: viewId } },
+        body: { baseVersion, ...changes },
       })),
     onMutate: () => setError(''),
     onError: (e) => setError(e instanceof Error ? e.message : 'operation_failed'),
-    onSettled: () => queries.invalidateQueries({ queryKey: ['planning', id] }),
+    onSettled: (_result, _error, { householdId }) => queries.invalidateQueries({ queryKey: ['planning', householdId] }),
   });
+  function saveViewState(changes: ViewStateChanges) {
+    if (!activeView) return;
+    updateViewState.mutate({ householdId: id, viewId: activeView.id, baseVersion: viewState?.version ?? 0, changes });
+  }
   const members = useQuery({
     queryKey: ['planning', id, 'members'],
     enabled: !!id,
@@ -477,7 +487,7 @@ export function Workspace({
                             type="checkbox"
                             checked={viewState?.splitFutureColumns ?? false}
                             disabled={updateViewState.isPending}
-                            onChange={(e) => updateViewState.mutate({ splitFutureColumns: e.target.checked })}
+                            onChange={(e) => saveViewState({ splitFutureColumns: e.target.checked })}
                           />
                           {t('splitFutureColumns')}
                         </label>
@@ -531,7 +541,7 @@ export function Workspace({
                 entities={entities.data ?? []}
                 members={members.data ?? []}
                 savingViewState={updateViewState.isPending}
-                setActiveFilters={(activeFilters) => updateViewState.mutate({ activeFilters })}
+                setActiveFilters={(activeFilters) => saveViewState({ activeFilters })}
               />
             )}
             <FilterWarnings warnings={list.data?.pages[0]?.warnings} />
