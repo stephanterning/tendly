@@ -215,22 +215,19 @@ export const viewStateSchema = z.object({
   version: z.number().int(),
   favorite: z.boolean(),
   activeFilters: z.array(z.uuid()),
-});
-export const viewContextSchema = z.object({
-  version: z.number().int(),
-  currentPlaceId: z.uuid().nullable(),
+  splitFutureColumns: z.boolean(),
 });
 export const viewCatalogSchema = z.object({
   filters: z.array(savedFilterSchema),
   views: z.array(savedViewSchema),
   states: z.record(z.uuid(), viewStateSchema),
-  context: viewContextSchema,
 });
 export const taskQuerySchema = z.object({
   viewId: z.uuid().optional(),
   replaceFilterId: z.uuid().optional(),
   expression: expressionSchema.optional(),
   filterIds: z.array(z.uuid()).max(50).optional(),
+  currentPlaceId: z.uuid().nullable().optional(),
   offset: z.number().int().min(0).max(100000).default(0),
   limit: z.number().int().min(1).max(100).default(50),
 });

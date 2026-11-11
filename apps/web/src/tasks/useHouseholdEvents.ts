@@ -52,7 +52,7 @@ export function useHouseholdEvents(householdId: string) {
                   void queries.invalidateQueries({ queryKey: ['session'] });
                 }
               }
-              if([...pending].some(r=>['views','filters','view-context'].includes(r))){keys.add('views');keys.add('tasks');}
+              if([...pending].some(r=>['views','filters'].includes(r))){keys.add('views');keys.add('tasks');}
               keys.add('preview');
               keys.add('search');
               for (const key of keys)

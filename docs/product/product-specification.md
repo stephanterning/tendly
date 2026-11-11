@@ -12,7 +12,7 @@ Two core questions drive the product: **What can I do now?** and **What do we ne
 
 The product is household-owned, not tied to a proprietary cloud service. It runs through Docker and is accessible over HTTPS; installation must remain portable across supported hosts.
 
-**Release meaning:** Milestone 1 / v1.0 is a **viable product**, not a stripped-down MVP. The initial release must be usable for the household's real tasks. Geolocation automation, push notifications and cloud backup come in later releases; the implementation plan is authoritative about when features ship.
+**Release meaning:** Milestone 1 / v1.0 is a **viable product**, not a stripped-down MVP. The initial release must be usable for the household's real tasks. Push notifications and cloud backup come in later releases. The implementation plan is authoritative about when features ship.
 
 ## 2. Accounts, households and roles
 
@@ -30,7 +30,7 @@ The product is household-owned, not tied to a proprietary cloud service. It runs
 
 ### 3.1 One user-facing column
 
-The task UI has **exactly six columns**, in this order:
+The task's `Column` field has **exactly six values**, in this order:
 
 | Internal column identifier | English | Swedish |
 |---|---|---|
@@ -43,7 +43,7 @@ The task UI has **exactly six columns**, in this order:
 
 No `Waiting` column, and no separate planning-horizon selector in the task UI. A column represents **intention**, not a literal date range: the system must not move cards between these columns merely because time passes or a deadline expires.
 
-Internally `status` is `todo | in_progress | done` and, while `status=todo`, `planningBucket` selects `someday | within_year | within_month | ready` (`ready` renders as **To Do**). The planning bucket is retained even when work starts or completes. A completion transition remembers the **immediately preceding user-facing column**; reopening a completed task restores that column, normally **In Progress** if that is where it was just before completion. A deliberate direct move to another column supersedes automatic reopening. The UI always exposes a single `Column` field; filters use that same six-value abstraction.
+Internally `status` is `todo | in_progress | done` and, while `status=todo`, `planningBucket` selects `someday | within_year | within_month | ready` (`ready` renders as **To Do**). The planning bucket is retained even when work starts or completes. A completion transition remembers the **exact preceding `Column` value**. Reopening a completed task restores that value, normally **In Progress** if that is where it was just before completion. A deliberate direct move to another column supersedes automatic reopening. The UI always exposes a single `Column` field. Filters use those same six values.
 
 ### 3.2 Task properties
 
@@ -58,7 +58,7 @@ Each task has at least: required title; optional rich-text description; column; 
 
 Availability is **derived**, not a manually controlled workflow state. A task is actionable when its effective earliest-start date is absent or reached **and** all its own and ancestor-inherited blocking dependencies are complete. An overridden earlier start date on a subtask may make it available before its parent's start date, unless a blocking dependency prevents it; parents do not impose status-based gating on descendants. A task can be manually moved to In Progress while blocked, but a warning is required; no automatic status changes occur when dependencies change.
 
-A task's **place and required resources** are contextual filter criteria, not intrinsic blockers: a task can be actionable but irrelevant to the user's current location or available equipment. No GPS detection is needed in v1.0; the user can manually choose a current place.
+A task's **place and required resources** are contextual filter criteria, not intrinsic blockers: a task can be actionable but irrelevant to the user's current location or available equipment. When browser permission is granted, the app detects Current Place automatically and uses it across views, search and filter previews.
 
 **Default Now view:** only tasks in `within_month`, `todo` or `in_progress` that are actionable and not trashed/archived. Other constraints (size, place, resources, assignees) come from saved quick filters. The base filter can be customized by users with normal view-edit permissions.
 
@@ -89,7 +89,9 @@ When epic lanes are enabled in a Board: desktop shows collapsible horizontal swi
 
 ### Places
 
-Places mean **specific usable locations**, e.g. `Grankottevägen 30`, `Sandvreten`, not categorical descriptions such as `Outdoor` (use a tag for Outdoor). A place has name, icon, color and optionally coordinates/radius. A task may match multiple places with **OR semantics**: it can be performed at any one of them. No place means anywhere. Users may manually select current place in v1; automatic geolocation is later.
+Places mean **specific usable locations**, e.g. `Grankottevägen 30`, `Sandvreten`, not categorical descriptions such as `Outdoor` (use a tag for Outdoor). A place has name, icon, color and optional coordinates and radius. A task can be performed at any one of its listed places. A task with no place can be done anywhere.
+
+The app requests browser location permission when the user turns on **At my current place** or another filter that uses Current Place. A restored filter can reuse permission already granted by the browser. When the position is available, the browser compares it to the active household's configured place radii. If several places match, the one with the nearest centre supplies Current Place. Outside every configured radius, **At my current place** matches tasks that can be done anywhere. When location is unavailable, location-dependent filters explain the missing context. The app keeps coordinates in the browser and records no movement history.
 
 ### Resources
 
@@ -138,13 +140,14 @@ The definition of each filter and the list of chips assigned to the view are sha
 
 Every household may have shared saved views with name, icon, color, creator, Board/List presentation, base filter, quick-filter bar contents, sort order, epic-lane mode, whether subtasks show as separate cards, and chosen visible card properties. Each user selects navigation favorites independently.
 
-The built-in **Now** and **Board** views are customizable and resettable but not deletable. Board normally shows all six workflow columns, optionally narrowed by its base/quick filters. Manual ordering is shared globally across views. A saved view can configure manual order (default), deadline, priority, effort or creation date sorting. Do not group by place/assignee.
+The built-in **Now** and **Board** views are customizable and resettable but not deletable. Board views default to **Future**, **To Do**, **In Progress** and **Done**. Future displays tasks from Someday, Within a Year and Within a Month together. The **Show separate future columns** option beside **View settings** restores the six-column layout and is saved per user and view across sessions. Both layouts use the same task column values, filters and view sort order. Manual ordering is shared globally across views. A saved view can configure manual order (default), deadline, priority, effort or creation date sorting. Do not group by place/assignee.
 
 Cards prioritize title, epic identity, high-priority badge when present, size (not precise minutes), deadline (if set), subtask progress and assignee chips/avatars. Other metadata is configurable per view or shown in details. No task-specific icon editor is required for v1; the epic icon is the primary card icon.
 
 ### Creating/editing tasks
 
 - One-field quick capture, global `+`, desktop shortcut `N`. When created without context, new tasks go to **Someday**; in a known column/epic lane, inherit that context. Creating from a filtered view may prefill *unambiguous* filter properties, but must not silently invent ambiguous ones.
+- Adding a task in Future or dropping a card into Future from another board column uses **Someday**. Dragging between positions or epic lanes within Future preserves the task's exact column. The task's `Column` field and the separate board columns allow choosing an exact planning horizon.
 - Optional expanded creation for all task properties and immediate subtasks.
 - Desktop drag to reorder/change column/move epic, or drop onto another task to reparent with a clear affordance; mobile uses menus and long-press for appropriate local rearrangements.
 - Autosave for normal task editing, with discreet pending/error state. Support multi-step Undo/Redo where practical; Undo must not overwrite another user's concurrent changes. Filter building is an explicit Save/Cancel exception.
@@ -176,9 +179,9 @@ Language follows browser/device locale initially; personal setting can override.
 
 The first release is self-hosted using Docker Compose and persistent PostgreSQL plus file storage; the full app works through HTTPS. Initial install includes secure passkeys, household roles, SMTP configuration, CLI manual PostgreSQL/file backup and documented restore. The app is an online-first installable PWA; full offline edits/sync are **future only**.
 
-**Milestone 1 / v1.0:** all core task, hierarchy, availability, dependencies, epics, manual place selection, resources, tags, dates, estimates, filter/view builder, recurrence/templates, collaboration, rich text, attachments, search, admin/users/passkeys, localization, themes and everyday mobile/desktop UI.
+**Milestone 1 / v1.0:** all core task, hierarchy, availability, dependencies, epics, automatic current place, resources, tags, dates, estimates, filter/view builder, recurrence/templates, collaboration, rich text, attachments, search, admin/users/passkeys, localization, themes and everyday mobile/desktop UI.
 
-**Milestone 2 / v1.1:** automatic GPS-based current place, notification center, device push and personal deadline/event reminders, plus UX improvements.
+**Milestone 2 / v1.1:** notification center, device push and personal deadline/event reminders, plus UX improvements.
 
 **Milestone 3 / v1.2:** measured performance and usability/reliability refinements from real use.
 
@@ -191,7 +194,7 @@ Unscheduled future concepts (not commitments): offline modifications and conflic
 1. **Parent with resources Car and Ladder:** child locally excludes Car. Parent later adds Trailer; child effectively requires Ladder and Trailer, not Car.
 2. **Deadline:** parent due Oct 30; child explicitly due Nov 5. The system warns about the later deadline but allows it. Parent changing its own date does not change the child's explicit override.
 3. **Dependency:** B depends on A; B is excluded by Now until A is completed (assuming other conditions pass); reopened A reblocks B without forcing any column changes.
-4. **Current location:** with manually chosen Sandvreten and the corresponding place-compatibility filter, include tasks tagged Sandvreten or no place; exclude those tagged only Grankottevägen 30. A multi-place task matches any listed place.
+4. **Current location.** With Sandvreten detected and **At my current place** active, include tasks with Sandvreten or no place. Exclude tasks whose only place is Grankottevägen 30. A multi-place task matches any listed place.
 5. **Recurring chain:** a winterization template's `Drain pipes` depends on its `Turn off pump`. Next year's `Drain pipes` must depend on next year's `Turn off pump`, not last year's.
 6. **Multiuser saved filter:** editing the shared filter definition changes every view that uses it, but does not reset anyone's individual on/off toggle state.
 

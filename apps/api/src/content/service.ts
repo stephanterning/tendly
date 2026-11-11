@@ -142,8 +142,9 @@ export class ContentService {
     q: string,
     offset: number,
     filterIds: string[] = [],
+    currentPlaceId?: string | null,
   ) {
-    return searchContent(this.db, actor, householdId, q, offset, filterIds);
+    return searchContent(this.db, actor, householdId, q, offset, filterIds, currentPlaceId);
   }
   async file(actor: Actor, householdId: string, id: string) {
     await this.tasks.scope(this.db, actor, householdId);

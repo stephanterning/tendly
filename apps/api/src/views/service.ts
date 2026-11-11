@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 import {
   allTasks,
@@ -22,7 +22,6 @@ import {
   filterVersions,
   views,
   viewStates,
-  viewContexts,
   taskOrderVersions,
 } from './schema.js';
 import { defaultFilters, defaultView } from './defaults.js';
@@ -67,7 +66,7 @@ export class ViewService {
   }
   async catalog(actor: Actor, householdId: string) {
     await this.initialize(actor, householdId);
-    const [filterRows, viewRows, stateRows, context] = await Promise.all([
+    const [filterRows, viewRows, stateRows] = await Promise.all([
       this.db
         .select({ row: filters, creator: users.name })
         .from(filters)
@@ -85,7 +84,6 @@ export class ViewService {
         .from(viewStates)
         .innerJoin(views, eq(views.id, viewStates.viewId))
         .where(and(eq(views.householdId, householdId), eq(viewStates.userId, actor.user.id))),
-      this.context(actor, householdId),
     ]);
     return {
       filters: filterRows.map(({ row, creator }) =>
@@ -95,18 +93,7 @@ export class ViewService {
         savedViewSchema.parse({ ...row, creator: creator ?? 'Tendly' }),
       ),
       states: Object.fromEntries(stateRows.map(({ state }) => [state.viewId, state])),
-      context,
     };
-  }
-  async context(actor: Actor, householdId: string, db: QueryDatabase = this.db) {
-    await this.tasks.scope(db, actor, householdId);
-    const [row] = await db
-      .select()
-      .from(viewContexts)
-      .where(
-        and(eq(viewContexts.householdId, householdId), eq(viewContexts.userId, actor.user.id)),
-      );
-    return row ?? { version: 0, currentPlaceId: null };
   }
   async references(db: QueryDatabase, householdId: string, expression: unknown) {
     const tree = parseExpression(expression);
@@ -353,7 +340,11 @@ export class ViewService {
     householdId: string,
     id: string,
     baseVersion: number,
-    changes: { favorite?: boolean | undefined; activeFilters?: string[] | undefined },
+    changes: {
+      favorite?: boolean | undefined;
+      activeFilters?: string[] | undefined;
+      splitFutureColumns?: boolean | undefined;
+    },
   ) {
     return this.db.transaction(async (tx) => {
       await this.tasks.scope(tx, actor, householdId, true);
@@ -371,10 +362,11 @@ export class ViewService {
       if (changes.activeFilters?.some((id) => !view.quickFilters.includes(id)))
         throw new AccountError('invalid_filter_reference');
       const value = {
-        ...changes,
+        favorite: changes.favorite ?? old?.favorite ?? false,
         activeFilters: changes.activeFilters
           ? [...new Set(changes.activeFilters)]
           : (old?.activeFilters ?? []),
+        splitFutureColumns: changes.splitFutureColumns ?? old?.splitFutureColumns ?? false,
         version: baseVersion + 1,
       };
       const [row] = await tx
@@ -385,33 +377,19 @@ export class ViewService {
       return row!;
     });
   }
-  async contextWrite(
-    actor: Actor,
-    householdId: string,
-    baseVersion: number,
-    currentPlaceId: string | null,
-  ) {
-    return this.db.transaction(async (tx) => {
-      await this.tasks.scope(tx, actor, householdId, true);
-      const old = await this.context(actor, householdId, tx);
-      if (old.version !== baseVersion) throw new AccountError('personal_state_conflict', 409);
-      if (currentPlaceId)
-        await this.references(tx, householdId, {
-          type: 'predicate',
-          field: 'places',
-          operator: 'IN',
-          value: [currentPlaceId],
-        });
-      const [row] = await tx
-        .insert(viewContexts)
-        .values({ householdId, userId: actor.user.id, version: baseVersion + 1, currentPlaceId })
-        .onConflictDoUpdate({
-          target: [viewContexts.householdId, viewContexts.userId],
-          set: { version: baseVersion + 1, currentPlaceId },
-        })
-        .returning();
-      return row!;
-    });
+  private async currentPlace(db: QueryDatabase, householdId: string, id?: string | null) {
+    if (id == null) return id;
+    // A deleted, archived or foreign place cannot supply context for this request.
+    const [place] = await db.select({ id: entities.id }).from(entities).where(and(
+      eq(entities.id, id),
+      eq(entities.householdId, householdId),
+      eq(entities.kind, 'place'),
+      eq(entities.archived, false),
+      isNotNull(entities.latitude),
+      isNotNull(entities.longitude),
+      isNotNull(entities.radius),
+    ));
+    return place?.id;
   }
   async query(actor: Actor, householdId: string, input: TaskQuery, includeArchived = false) {
     return this.db.transaction(
@@ -465,7 +443,7 @@ export class ViewService {
       ...definitions.filter((f) => !f.deleted).map((f) => f.expression),
       ...(input.expression ? [parseExpression(input.expression)] : []),
     ];
-    const context = await this.context(actor, householdId, db);
+    const currentPlaceId = await this.currentPlace(db, householdId, input.currentPlaceId);
     const [order] = await db
       .select()
       .from(taskOrderVersions)
@@ -477,7 +455,7 @@ export class ViewService {
       expressions,
       {
         userId: actor.user.id,
-        currentPlaceId: context.currentPlaceId,
+        currentPlaceId,
         timezone: household.timezone,
         now: Date.now(),
       },

@@ -23,7 +23,7 @@ is not the M1 release gate; every remaining M1 requirement still applies.
 | **5 — priority 2** | Filter AST/builder/preview/history, quick bars, shared views, global ordering, Board interactions for available task model | 3 and Stage 7 sync/search foundations; Stage 4 integration below | Matching consistency, pagination, personal/shared state, accessible drag alternatives; household evaluation | 12–16, 21–23 where applicable |
 | 4 | Hierarchy, inheritance, effective dependency graph, availability, warnings; integration with existing filters/views/search/sync/Undo | 3, 7, 5 | Deep trees, inherited exclusions, graph races, independent actionable children; existing views/preview/search agree on effective values | 06–12 and hierarchy-dependent parts of 14–16, 20–22 |
 | 6 | Templates, recurrence, archive/Trash and safe worker jobs; integration with content/search/sync/Undo/settings | 4, 5, 7 | Clone/remap/retry, preserve instances, no parent archive with unfinished descendants, unresolved deleted blockers | 17–18, 20 and lifecycle-dependent parts of 19, 21–23 |
-| 8 | Complete VP acceptance, usability/accessibility, backup/restore drill, release docs/images | All preceding stages | All M1 scenarios, fresh-host restoration, household review, no release blockers | 01–25 |
+| 8 | Complete VP acceptance, usability/accessibility, backup/restore drill, release docs/images | All preceding stages | All M1 scenarios, fresh-host restoration, household review, no release blockers | 01–26 |
 
 ## Dependencies in the revised order
 

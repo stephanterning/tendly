@@ -10,7 +10,6 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { households, users } from '../accounts/schema.js';
-import { entities } from '../tasks/schema.js';
 import type { FilterExpression, ViewFields } from '@tendly/shared';
 const identity = () => ({
   id: uuid('id').primaryKey().defaultRandom(),
@@ -71,24 +70,9 @@ export const viewStates = pgTable(
     version: integer('version').notNull().default(1),
     favorite: boolean('favorite').notNull().default(false),
     activeFilters: jsonb('active_filters').$type<string[]>().notNull().default([]),
+    splitFutureColumns: boolean('split_future_columns').notNull().default(false),
   },
   (t) => [primaryKey({ columns: [t.viewId, t.userId] })],
-);
-export const viewContexts = pgTable(
-  'user_view_contexts',
-  {
-    householdId: uuid('household_id')
-      .notNull()
-      .references(() => households.id, { onDelete: 'cascade' }),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    version: integer('version').notNull().default(1),
-    currentPlaceId: uuid('current_place_id').references(() => entities.id, {
-      onDelete: 'set null',
-    }),
-  },
-  (t) => [primaryKey({ columns: [t.householdId, t.userId] })],
 );
 export const taskOrderVersions = pgTable('task_order_versions', {
   householdId: uuid('household_id')

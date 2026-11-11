@@ -8,7 +8,6 @@ import {
   viewFieldsSchema,
   savedViewSchema,
   viewStateSchema,
-  viewContextSchema,
   viewCatalogSchema,
   taskQuerySchema,
   taskQueryResultSchema,
@@ -140,6 +139,7 @@ export async function registerViewRoutes(server: FastifyInstance, accounts: Acco
           baseVersion: z.number().int().min(0),
           favorite: z.boolean().optional(),
           activeFilters: z.array(z.uuid()).max(50).optional(),
+          splitFutureColumns: z.boolean().optional(),
         }),
         response: { 200: viewStateSchema },
       },
@@ -151,26 +151,6 @@ export async function registerViewRoutes(server: FastifyInstance, accounts: Acco
         r.params.id,
         r.body.baseVersion,
         r.body,
-      ),
-  );
-  app.put(
-    '/api/v1/households/:householdId/view-context',
-    {
-      schema: {
-        params: scope,
-        body: z.object({
-          baseVersion: z.number().int().min(0),
-          currentPlaceId: z.uuid().nullable(),
-        }),
-        response: { 200: viewContextSchema },
-      },
-    },
-    async (r) =>
-      service.contextWrite(
-        await actor(r),
-        r.params.householdId,
-        r.body.baseVersion,
-        r.body.currentPlaceId,
       ),
   );
   app.post(

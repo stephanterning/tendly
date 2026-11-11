@@ -9,8 +9,8 @@ comments/mentions, files/photos, search and live household synchronization are l
 tested. Shared filters/views and Board interactions are locally tested.
 **Stage 4 (hierarchy/inheritance/dependencies) is next**, followed by **6 → 8**. This is not
 yet the complete Milestone 1 Viable Product. Stages 7 and 5 are prioritized for
-meaningful household use and evaluation; the full M1 scope remains unchanged.
-Automatic GPS and notifications follow in M2, integrated cloud backup in M4.
+meaningful household use and evaluation. Automatic current place is part of M1.
+Notifications follow in M2 and integrated cloud backup in M4.
 
 ## Start here
 

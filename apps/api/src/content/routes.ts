@@ -191,6 +191,7 @@ export async function registerContentRoutes(
         body: paging.extend({
           q: z.string().trim().min(1).max(200),
           filterIds: z.array(z.uuid()).max(50).default([]),
+          currentPlaceId: z.uuid().nullable().optional(),
         }),
         response: {
           200: z.object({
@@ -208,6 +209,7 @@ export async function registerContentRoutes(
         r.body.q,
         r.body.offset,
         r.body.filterIds,
+        r.body.currentPlaceId,
       ),
   );
   app.get(

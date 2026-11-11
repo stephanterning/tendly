@@ -6210,12 +6210,8 @@ export interface paths {
                                     version: number;
                                     favorite: boolean;
                                     activeFilters: string[];
+                                    splitFutureColumns: boolean;
                                 };
-                            };
-                            context: {
-                                version: number;
-                                /** Format: uuid */
-                                currentPlaceId: string | null;
                             };
                         };
                     };
@@ -7808,6 +7804,7 @@ export interface paths {
                         baseVersion: number;
                         favorite?: boolean;
                         activeFilters?: string[];
+                        splitFutureColumns?: boolean;
                     };
                 };
             };
@@ -7822,165 +7819,7 @@ export interface paths {
                             version: number;
                             favorite: boolean;
                             activeFilters: string[];
-                        };
-                    };
-                };
-                /** @description Default Response */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                413: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                415: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-                /** @description Default Response */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            error: string;
-                        };
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/households/{householdId}/view-context": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    householdId: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        baseVersion: number;
-                        /** Format: uuid */
-                        currentPlaceId: string | null;
-                    };
-                };
-            };
-            responses: {
-                /** @description Default Response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            version: number;
-                            /** Format: uuid */
-                            currentPlaceId: string | null;
+                            splitFutureColumns: boolean;
                         };
                     };
                 };
@@ -8148,6 +7987,8 @@ export interface paths {
                             };
                         };
                         filterIds?: string[];
+                        /** Format: uuid */
+                        currentPlaceId?: string | null;
                         /** @default 0 */
                         offset?: number;
                         /** @default 50 */
@@ -10405,6 +10246,8 @@ export interface paths {
                         q: string;
                         /** @default [] */
                         filterIds?: string[];
+                        /** Format: uuid */
+                        currentPlaceId?: string | null;
                     };
                 };
             };

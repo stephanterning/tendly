@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { Plus, Settings2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { ViewCatalog, SavedView, SavedFilter, Entity } from '@tendly/shared';
 import type { Member } from '../tasks/TaskFields.js';
 import { api, result } from '../accounts/api.js';
 import { defined } from '../tasks/api.js';
 import { Dialog } from '../components/ui/dialog.js';
 import { EntityIcon, epicStyle } from '../tasks/identity.js';
-import { FilterEditor, ViewEditor } from './Editors.js';
+import { FilterEditor } from './Editors.js';
+import { useCurrentPlace, usesCurrentPlace } from './CurrentPlace.js';
 import { filterName, viewName } from './api.js';
 export function QuickBar({
   householdId,
@@ -16,16 +17,21 @@ export function QuickBar({
   catalog,
   entities,
   members,
+  savingViewState,
+  setActiveFilters,
 }: {
   householdId: string;
   view: SavedView;
   catalog: ViewCatalog;
   entities: Entity[];
   members: Member[];
+  savingViewState: boolean;
+  setActiveFilters: (filters: string[]) => void;
 }) {
   const { t } = useTranslation(),
     queries = useQueryClient();
-  const state = catalog.states[view.id] ?? { version: 0, activeFilters: [], favorite: false };
+  const { request: requestLocation } = useCurrentPlace();
+  const activeFilters = catalog.states[view.id]?.activeFilters ?? [];
   const [createdFilter, setCreatedFilter] = useState<SavedFilter | null>(null);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState('');
@@ -33,7 +39,6 @@ export function QuickBar({
     [editing, setEditing] = useState<{ filter: SavedFilter | null; duplicate?: boolean } | null>(
       null,
     ),
-    [editView, setEditView] = useState(false),
     [choosing, setChoosing] = useState(false);
   const hold = useRef<ReturnType<typeof setTimeout> | null>(null),
     held = useRef(false);
@@ -52,15 +57,6 @@ export function QuickBar({
       setBusy(false);
     }
   };
-  const activate = (activeFilters: string[]) =>
-    run(() =>
-      result(
-        api.PUT('/api/v1/households/{householdId}/views/{id}/state', {
-          params: { path: { householdId, id: view.id } },
-          body: { baseVersion: state.version, activeFilters },
-        }),
-      ),
-    );
   const filters = view.quickFilters.flatMap((id) =>
     catalog.filters.filter((f) => f.id === id && !f.deleted),
   );
@@ -83,8 +79,8 @@ export function QuickBar({
             className="filter-chip"
             style={epicStyle(filter)}
             key={filter.id}
-            disabled={busy}
-            aria-pressed={state.activeFilters.includes(filter.id)}
+            disabled={busy || savingViewState}
+            aria-pressed={activeFilters.includes(filter.id)}
             onContextMenu={(e) => {
               e.preventDefault();
               setMenu(filter);
@@ -112,11 +108,11 @@ export function QuickBar({
                 held.current = false;
                 return;
               }
-              void activate(
-                state.activeFilters.includes(filter.id)
-                  ? state.activeFilters.filter((id) => id !== filter.id)
-                  : [...state.activeFilters, filter.id],
-              );
+              const isActive = activeFilters.includes(filter.id);
+              if (!isActive && usesCurrentPlace(filter.expression)) requestLocation();
+              setActiveFilters(isActive
+                ? activeFilters.filter((id) => id !== filter.id)
+                : [...activeFilters, filter.id]);
             }}
           >
             <EntityIcon name={filter.icon} size={16} />
@@ -130,47 +126,12 @@ export function QuickBar({
         >
           <Plus size={18} />
         </button>
-        {state.activeFilters.some((id) => filters.some((f) => f.id === id)) && (
-          <button className="quiet" disabled={busy} onClick={() => void activate([])}>
+        {activeFilters.some((id) => filters.some((f) => f.id === id)) && (
+          <button className="quiet" disabled={busy || savingViewState} onClick={() => setActiveFilters([])}>
             {t('clearFilters')}
           </button>
         )}
       </div>
-      <details className="view-secondary"><summary>{t('viewOptions')}{catalog.context.currentPlaceId ? ' · ' + (entities.find(e => e.id === catalog.context.currentPlaceId)?.name ?? '') : ''}</summary><div className="view-secondary-controls">
-        <label className="current-place">
-          <span>{t('currentPlace')}</span>
-          <select
-            value={catalog.context.currentPlaceId ?? ''}
-            disabled={busy}
-            onChange={(e) =>
-              void run(() =>
-                result(
-                  api.PUT('/api/v1/households/{householdId}/view-context', {
-                    params: { path: { householdId } },
-                    body: {
-                      baseVersion: catalog.context.version,
-                      currentPlaceId: e.target.value || null,
-                    },
-                  }),
-                ),
-              )
-            }
-          >
-            <option value="">{t('noCurrentPlace')}</option>
-            {entities
-              .filter((e) => e.kind === 'place')
-              .map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-          </select>
-        </label>
-        <button className="quiet" aria-label={t('viewOptions')} onClick={() => setEditView(true)}>
-          <Settings2 size={18} />
-          {t('viewOptions')}
-        </button>
-      </div></details>
       {error && (
         <p role="alert" className="alert error">
           {t(error)}
@@ -298,7 +259,6 @@ export function QuickBar({
           onClose={() => setEditing(null)}
         />
       )}
-      {editView && <ViewEditor {...common} view={view} onClose={() => setEditView(false)} />}
     </div>
   );
 }

@@ -1,9 +1,11 @@
 import { routeUrl, type Route } from '../navigation/routes.js';
 import { useViewCatalog, filterName } from '../views/api.js';
+import { FilterWarnings, useCurrentPlace, usesCurrentPlace } from '../views/CurrentPlace.js';
 import { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, result } from '../accounts/api.js';
+import { defined } from '../tasks/api.js';
 export function Search({
   householdId,
   openTask,
@@ -16,6 +18,7 @@ export function Search({
   openLibrary: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const currentPlace = useCurrentPlace();
   const catalog = useViewCatalog(householdId);
   const filterIds = route.filters, input = route.q;
   const setFilterIds = (ids: string[]) => onSearch(input, ids);
@@ -26,14 +29,14 @@ export function Search({
     return () => clearTimeout(timer);
   }, [input]);
   const search = useInfiniteQuery({
-    queryKey: ['planning', householdId, 'search', q, filterIds],
+    queryKey: ['planning', householdId, 'search', q, filterIds, { currentPlaceId: currentPlace.id }],
     enabled: !!q,
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
       result(
         api.POST('/api/v1/households/{householdId}/search', {
           params: { path: { householdId } },
-          body: { q, offset: pageParam, filterIds },
+          body: defined({ q, offset: pageParam, filterIds, currentPlaceId: currentPlace.id }),
         }),
       ),
     getNextPageParam: (last) => last.nextOffset ?? undefined,
@@ -64,24 +67,21 @@ export function Search({
                 <input
                   type="checkbox"
                   checked={filterIds.includes(f.id)}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    if (e.target.checked && usesCurrentPlace(f.expression)) currentPlace.request();
                     setFilterIds(
                       e.target.checked
                         ? [...filterIds, f.id]
                         : filterIds.filter((id) => id !== f.id),
-                    )
-                  }
+                    );
+                  }}
                 />
                 {filterName(f, t)}
               </label>
             ))}
         </div>
       </details>
-      {search.data?.pages[0]?.warnings.map((w) => (
-        <p key={w} role="status">
-          {t(w)}
-        </p>
-      ))}
+      <FilterWarnings warnings={search.data?.pages[0]?.warnings} />
       {q && search.isFetching && <p role="status">{t('loading')}</p>}
       {search.isError && (
         <p role="alert">
@@ -91,6 +91,7 @@ export function Search({
       {q &&
         !search.isFetching &&
         !search.isError &&
+        !search.data?.pages[0]?.warnings.length &&
         !search.data?.pages.some((p) => p.items.length) && (
           <p role="status">{t('noSearchResults')}</p>
         )}

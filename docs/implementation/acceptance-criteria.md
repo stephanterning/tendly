@@ -21,7 +21,11 @@ These scenarios define **observable behavior**. Use automated coverage for the m
 
 **Given** user A belongs only to household A, **when** they forge task IDs, file IDs, dependency IDs, query scopes, WebSocket subscriptions or write payloads belonging to household B, **then** no household-B data is disclosed or modified. Cross-household parenting/dependency/relations are denied, including in bulk operations and worker jobs.
 
-### AC-04 — Exactly six columns, correct lifecycle
+### AC-04 — Board layout and task column lifecycle
+
+**Given** a Board view without a personal layout preference, **then** it shows Future, To Do, In Progress and Done. **When** a user enables **Show separate future columns** beside **View settings** in the heading, **then** Future is replaced by Someday, Within a Year and Within a Month for that user and view across sessions. Task column values, filters and sort order are preserved. On mobile the selector and swipe navigation follow the chosen layout.
+
+**Given** Future is grouped, **when** a user adds a task there or drags a card there from another board column, **then** the task's column is Someday. Reordering a card within Future preserves its column.
 
 **Given** task T in Within a Year, **when** moved to In Progress and then Done, **then** it visually appears in the correct columns and retains its planning bucket internally. **When** T is reopened from Done, **then** it returns to **In Progress** (the immediately prior visible column), not Within a Year. **When** a deadline passes, its column does not auto-change. Neither `Waiting` nor separate UI `Planning Horizon`/`Work Status` selectors appear.
 
@@ -55,7 +59,7 @@ These scenarios define **observable behavior**. Use automated coverage for the m
 
 ### AC-12 — Places OR and resources semantics
 
-**Given** manually selected current place Sandvreten and a place-compatibility filter, **then** a task with places `[Grankottevägen 30, Sandvreten]` matches; one with only Grankottevägen 30 does not; a task with no place matches everywhere. **Given** available resources include `Car` but not `Trailer`, a task requiring Car is feasible, one requiring both Car and Trailer is not, and one requiring neither is feasible. A `Requires Car` filter has different meaning from `Feasible with Car`.
+**Given** automatically detected current place Sandvreten and a place-compatibility filter, **then** a task with places `[Grankottevägen 30, Sandvreten]` matches; one with only Grankottevägen 30 does not; a task with no place matches everywhere. **Given** available resources include `Car` but not `Trailer`, a task requiring Car is feasible, one requiring both Car and Trailer is not, and one requiring neither is feasible. A `Requires Car` filter has different meaning from `Feasible with Car`.
 
 ### AC-13 — Epic colors and lanes
 
@@ -109,11 +113,11 @@ These scenarios define **observable behavior**. Use automated coverage for the m
 
 **Before** merging a release PR, type checking, linting, relevant behavior tests and builds pass. Focus tests on security isolation, inheritance, cycles, filtering, recurrence, conflict logic and persistence. There is **no required coverage percentage** and no requirement to automate every acceptance scenario as a distinct test. Nontrivial invariants are documented in understandable source comments.
 
-## M2 / v1.1 — Smart Assistance
-
 ### AC-26 — Automatic current place
 
-With location permission granted and coordinates inside a configured place radius, Current Place is detected; a manual override is honored. Without permission, the app continues functioning with manual selection. Current location matching respects task-place OR semantics. No movement history is retained.
+Opening the app leaves the browser permission prompt closed. Activating **At my current place** triggers it when needed. With permission granted and coordinates inside a configured radius, Current Place is detected for all views, search and filter previews. As the device moves, the matches update. Outside every configured radius, **At my current place** shows tasks that can be done anywhere. When permission is denied, location-dependent filters explain why their context is unavailable and other views and filters still work. The app retains no movement history.
+
+## M2 / v1.1 — Smart Assistance
 
 ### AC-27 — Notification relevance
 
