@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Entity, FilterExpression } from '@tendly/shared';
+import { parseExpression, type Entity, type FilterExpression, type SavedFilter } from '@tendly/shared';
 import { isGeocodedPlace, nearestPlace } from './place-detection.js';
 
 type Fix =
@@ -17,10 +17,13 @@ export function useCurrentPlace() {
   return place;
 }
 
-export function usesCurrentPlace(expression: FilterExpression): boolean {
-  if (expression.type === 'group') return expression.children.some(usesCurrentPlace);
-  const { value } = expression;
-  return value !== null && typeof value === 'object' && !Array.isArray(value) && value.token === 'CURRENT_PLACE';
+export function usesCurrentPlace(expression: SavedFilter['expression']): boolean {
+  const matches = (node: FilterExpression): boolean => {
+    if (node.type === 'group') return node.children.some(matches);
+    const { value } = node;
+    return value !== null && typeof value === 'object' && !Array.isArray(value) && value.token === 'CURRENT_PLACE';
+  };
+  return matches(parseExpression(expression));
 }
 
 export function useDetectedPlace(entities: Entity[] | undefined): CurrentPlace {
