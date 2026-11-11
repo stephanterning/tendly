@@ -83,20 +83,20 @@ The home screen is a **vertical task list**, not a board, KPI panel or agenda ca
 
 - Apply the Product Specification's default base filter: **Within a Month, To Do, In Progress**, with satisfied dependencies and effective earliest-start date reached.
 - Render a horizontal **view-specific quick-filter chip bar** above tasks. Chips are saved filters, not hardcoded property dropdowns. Multiple active chips narrow via AND.
-- Show a compact location selector when the user wants to set their current place (manual in v1.0); location does not filter tasks unless an explicit base/quick filter uses it.
+- Use the app-wide detected Current Place when an explicit base or quick filter references it.
 - Support simple sensible empty states: *no actionable tasks* versus *filters have zero matches*; show active chips and a clear reset action.
-- When the household has no current tasks, invite the user to create the first one. An empty Now view with other tasks offers Board. Keep view settings and manual place selection in a secondary disclosure; show the selected place in its summary.
+- When the household has no current tasks, invite the user to create the first one. An empty Now view with other tasks offers Board. Show the **View settings** button beside the view heading.
 - Keep create-task easy to reach regardless of scroll position.
 
 ## 6. Board and saved views
 
 ### Workflow display
 
-The board has **exactly six** visible column choices, translated by locale: Someday, Within a Year, Within a Month, To Do, In Progress and Done. They map to the **single `Column` property**. Do not show an additional editable “Planning horizon” or “Work status” field; these are implementation concepts.
+The board defaults to **Future**, **To Do**, **In Progress** and **Done**, translated by locale. Place the **View settings** button beside the Board heading, followed by the **Show separate future columns** checkbox. The checkbox replaces Future with Someday, Within a Year and Within a Month, in that order. Save this choice per user and board view. The single task `Column` field continues to expose the six exact choices.
 
 **Desktop:** multiple columns side by side, horizontal overflow on smaller desktops, drag between columns and optional epic swimlanes. **Mobile:** exactly one active column shown at once, with swipe between columns **and** a direct column selector. With epic grouping, use collapsible sections within the active mobile column; desktop lanes are collapsible horizontal swimlanes. Global epic ordering applies everywhere. The Unassigned epic lane is last, empty lanes hidden unless that view requests them.
 
-At tablet widths up to 1024px, use the single-column board with a direct selector and compact navigation. Column choices display counts for the currently loaded results; they do not claim to count unloaded pages. The selected column is retained in the workspace address.
+At tablet widths up to 1024px, use the single-column board with a direct selector and compact navigation. The selector and swipe order use the current four- or six-column layout. Selecting Future shows the combined results for the three planning horizons. Column counts reflect the currently loaded results. The workspace address retains the selected task column and shows Future in grouped mode when that column is Someday, Within a Year or Within a Month.
 
 A view can be **Board** or **List** and records base filter, selected quick-filter chips, sorting (manual/default, deadline, High, effort, created date), epic lanes on/off, empty-lane visibility, visible card properties and subtask-as-card mode. Only group by epic; assignee/place are filter predicates, not lanes. All views are shared; users personally favorite views for their navigation.
 
@@ -108,11 +108,13 @@ Built-in Now/Board views are editable and resettable but not deletable. View edi
 
 A horizontal, scrollable set of **saved filter chips**, specific to the active view. A tap/click toggles. Selected chips remain active across sessions for **that user and that view**. A `+` opens the shared filter library / create flow. Right-click or long-press opens Edit, Duplicate and Delete. Ensure buttons work equally well on touch and keyboard. Do not invent permanent `All / Now` segmented controls inconsistent with the underlying saved filter model.
 
+**At my current place** matches tasks that can be done at the automatically detected place or anywhere. Turning on the filter triggers the browser's location permission request when needed. If a saved or draft filter needs permission, offer **Use my location** with the results. Place coordinates and radii are edited in the library.
+
 After creating a filter from this bar, offer an explicit **Add to this view** action. Saving the definition and attaching it to a view are separate, recoverable operations; other views and personal active toggles remain unchanged. Closing, cancelling or navigating away from an edited filter/view asks whether to keep editing or discard the unsaved changes. Reload/close warns about these in-memory drafts; unlike task recovery copies, filter/view drafts are not persisted across reloads. Dialog replacement must move focus into the new dialog.
 
 ### Visual filter builder
 
-Use nested groups and typed controls for AND/OR/NOT, field choice, operator and values. Fields are expressed in domain/user terms (`Column`, `Size`, `Place`, `Available`, `Requires resource`, etc.); never expose `planningBucket` as a second task selection. Dynamic operands include Today, Current User and manually selected Current Place, with GPS becoming available later.
+Use nested groups and typed controls for AND/OR/NOT, field choice, operator and values. Fields are expressed in domain/user terms (`Column`, `Size`, `Place`, `Available`, `Requires resource`, etc.); never expose `planningBucket` as a second task selection. Dynamic operands include Today, Current User and automatically detected Current Place.
 
 - **Live matching count and results** as edits are made, without committing changes to a saved definition.
 - **Desktop:** a side panel/adjacent editor leaves results visible; **mobile:** full-screen editor with a preview switch/area.

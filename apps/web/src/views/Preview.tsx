@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { expressionSchema, type FilterExpression } from '@tendly/shared';
 import { api, result } from '../accounts/api.js';
 import { defined } from '../tasks/api.js';
+import { FilterWarnings, useCurrentPlace } from './CurrentPlace.js';
 export function Preview({
   householdId,
   expression,
@@ -18,6 +19,7 @@ export function Preview({
   replaceFilterId?: string | undefined;
 }) {
   const { t } = useTranslation();
+  const currentPlace = useCurrentPlace();
   const [draft, setDraft] = useState(expression);
   useEffect(() => {
     const timer = setTimeout(() => setDraft(expression), 250);
@@ -25,7 +27,7 @@ export function Preview({
   }, [expression]);
   const valid = expressionSchema.safeParse(draft).success;
   const preview = useQuery({
-    queryKey: ['planning', householdId, 'preview', draft, filterIds, viewId, replaceFilterId],
+    queryKey: ['planning', householdId, 'preview', draft, filterIds, viewId, replaceFilterId, { currentPlaceId: currentPlace.id }],
     enabled: valid,
     queryFn: () =>
       result(
@@ -36,6 +38,7 @@ export function Preview({
             filterIds,
             viewId,
             replaceFilterId,
+            currentPlaceId: currentPlace.id,
             offset: 0,
             limit: 20,
           }),
@@ -58,11 +61,7 @@ export function Preview({
       {preview.data && (
         <>
           <h3 aria-live="polite">{t('previewMatches', { count: preview.data.count })}</h3>
-          {preview.data.warnings.map((w) => (
-            <p role="status" key={w}>
-              {t(w)}
-            </p>
-          ))}
+          <FilterWarnings warnings={preview.data.warnings} />
           <ul>
             {preview.data.items.map((task) => (
               <li key={task.id}>

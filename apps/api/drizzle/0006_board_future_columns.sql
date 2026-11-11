@@ -1,0 +1,1 @@
+ALTER TABLE "user_view_states" ADD COLUMN "split_future_columns" boolean DEFAULT false NOT NULL;

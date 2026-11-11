@@ -92,6 +92,9 @@ p { margin: .65rem 0; }
 .workspace-main { min-width: 0; padding: 2.5rem clamp(1.25rem,3vw,3rem); }
 .page-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 2rem; }
 .page-heading h1 { font-size: 2.1rem; margin: .25rem 0 .5rem; }
+.view-title { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem; }
+.view-settings-button { background: var(--tint); font-size: .85rem; padding: .5rem .75rem; }
+.view-layout-option { font-size: .85rem; }
 .eyebrow { font-size: .8rem; color: var(--muted); margin: 0; }
 .page-heading .muted { margin-bottom: 0; font-size: .9rem; }
 .now-list { display: grid; gap: .65rem; max-width: 760px; }
@@ -107,11 +110,11 @@ p { margin: .65rem 0; }
 .card-metadata>span { display: inline-flex; align-items: center; gap: .25rem; }
 .deadline.overdue { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .card-avatar { border: 1px solid currentColor; border-radius: 50%; min-width: 20px; height: 20px; justify-content: center; }
-.size-chip { font-size: .72rem; font-weight: 600; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #80808018; flex-shrink: 0; }
+.size-chip { font-size: .72rem; font-weight: 600; width: 30px; height: 30px; justify-content: center; border-radius: 50%; background: #80808018; flex-shrink: 0; }
 .card-complete { width: 44px; flex-shrink: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .card-complete>span { width: 19px; height: 19px; display: grid; place-items: center; border: 1.5px solid currentColor; border-radius: 4px; }
 .completed .card-content strong { text-decoration: line-through; }
-.board { display: grid; grid-template-columns: repeat(6,minmax(245px,1fr)); gap: 1rem; overflow-x: auto; padding: .25rem .25rem 1.5rem; align-items: start; }
+.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(245px,1fr); gap: 1rem; overflow-x: auto; padding: .25rem .25rem 1.5rem; align-items: start; }
 .board-column { min-width: 0; border-radius: 14px; background: var(--surface); padding: .5rem; border: 1px solid var(--line); }
 .board-column>header { display: flex; align-items: center; justify-content: space-between; padding: 0 .25rem .45rem .5rem; }
 .board-column h2 { font-size: .85rem; margin: 0; }
@@ -255,9 +258,6 @@ button.primary:hover:not(:disabled) { background:var(--accent); }
 .quick-filter-bar { display: flex; align-items: center; gap: .5rem; overflow-x: auto; padding: .25rem 0; }
 .filter-chip { flex-shrink: 0; border-radius: 999px; font-size: .85rem; min-height: 38px; padding: .45rem .85rem; }
 .filter-chip[aria-pressed=true] { border-color: var(--accent); background: var(--accent); color: var(--surface); }
-.view-secondary-controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
-.current-place { display: flex; align-items: center; gap: .65rem; margin: 0; font-size: .8rem; font-weight: 400; }
-.current-place select { width: auto; max-width: 220px; min-height: 36px; padding: .35rem .6rem; }
 .favorite-views { max-height: 35vh; overflow-y: auto; }
 .dialog-wide { width: min(1100px,calc(100vw - 3rem)); }
 .filter-editor-layout { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(220px,1fr); gap: 1.5rem; align-items: start; margin: 1rem 0; }
@@ -301,8 +301,6 @@ button.primary:hover:not(:disabled) { background:var(--accent); }
   .filter-group { padding: .45rem; }
   .filter-rule { grid-template-columns: minmax(0,1fr); }
   .filter-chip { min-height: 44px; }
-  .view-secondary-controls { gap: .5rem; }
-  .current-place { flex-wrap: wrap; }
   .definition-list .button-row { flex-wrap: wrap; }
   .card-move { min-width: 28px; }
   .order-end { display: none; }
@@ -459,9 +457,6 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 .page-heading { margin-bottom: 1rem; }
 .workspace-main { padding-top: 1.5rem; }
-.view-secondary { margin-block: .4rem .8rem; }
-.view-secondary>summary { width: fit-content; color: var(--muted); font-size: .85rem; min-height: 44px; padding-block: .7rem; cursor: pointer; }
-.view-secondary-controls { margin-top: .25rem; }
 .empty-state { padding: 2rem 1rem; }
 @media (min-width: 721px) and (max-width: 1024px) {
   .workspace,.nav-collapsed { grid-template-columns: 160px minmax(0,1fr); }

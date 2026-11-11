@@ -15,6 +15,7 @@ export async function searchContent(
   q: string,
   offset: number,
   filterIds: string[],
+  currentPlaceId?: string | null,
 ) {
   return db.transaction(
     async (tx) => {
@@ -25,7 +26,7 @@ export async function searchContent(
             tx,
             actor,
             householdId,
-            { filterIds, offset: 0, limit: Number.MAX_SAFE_INTEGER },
+            { filterIds, currentPlaceId, offset: 0, limit: Number.MAX_SAFE_INTEGER },
             true,
           )
         : null;

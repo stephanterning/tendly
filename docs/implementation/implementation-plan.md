@@ -14,8 +14,8 @@ Prioritize coherent core workflows (capture → plan → find actionable task �
 
 | Milestone / indicative release | Outcome | Core distinction |
 |---|---|---|
-| **M1 / 1.0.0 — Viable Product** | Family can replace its previous task planner | Complete baseline features, no push/GPS/cloud backup |
-| **M2 / 1.1.0 — Smart Assistance** | Location-aware and proactive | Automatic geolocation, in-app and push notifications/reminders |
+| **M1 / 1.0.0 — Viable Product** | Family can replace its previous task planner | Complete baseline features including automatic Current Place |
+| **M2 / 1.1.0 — Smart Assistance** | Proactive reminders | In-app and push notifications/reminders |
 | **M3 / 1.2.0 — Stability & Usability** | Improved through real usage | Performance, reliability, measured UX fixes |
 | **M4 / 1.3.0 — Automated Backup & Recovery** | Integrated encrypted offsite recovery | Restic/Rclone, Google Drive + Dropbox, admin UI |
 
@@ -33,18 +33,18 @@ Release numbers are indicative; patch releases may occur between milestones. M4 
 
 ### 3.2 Real task domain
 
-- Tasks with six visible columns (Someday, Within a Year, Within a Month, To Do, In Progress, Done), one column control; separate internal status/planning bucket; restore immediate pre-Done column on reopen.
+- Tasks with six column values (Someday, Within a Year, Within a Month, To Do, In Progress, Done), one column control, separate internal status/planning bucket and restoration of the immediate pre-Done column on reopen.
 - Full tasks/subtasks at unlimited depths, drag/menu reparenting, cycle checks, progress and independent completion, warned completion of unfinished parent.
 - Dynamic inheritance, including explicit none/false and **item-wise additions/exclusions** for places/resources/tags; inherited dependency blocking and explicit deadline/start overrides.
 - Epics (single/optional), globally sorted, curated light/dark colors and icons, configurable Board lanes, Unassigned and archive/delete semantics.
-- Named places with manual current-location selection and optional stored coordinates/radius (automatic geolocation is **M2**), resources, tags, assignees, dates, boolean High, configurable XS–XL and optional exact estimate.
+- Named places with optional coordinates and radius, automatic Current Place via browser geolocation, resources, tags, assignees, dates, boolean High, configurable XS–XL and optional exact estimate.
 - Finish-to-Start dependencies and Related to links, cycle protection, server-evaluated availability and blocked-start warnings.
 - Completion/reopen metadata, activity log, 30d completed auto-archive (only without unfinished descendants) and 30d soft-delete Trash with restore/permanent-delete role constraints.
 
 ### 3.3 Everyday UI: usable on phone and desktop
 
 - **Now** as landing view: actionable tasks from Within a Month/To Do/In Progress by default, plus view-scoped quick-filter bar.
-- **Board**: all six columns, desktop drag/drop and epic lanes, mobile one-column-at-a-time navigation with swipe/select, expandable epic sections.
+- **Board** groups the three planning horizons under Future by default, with a personal toggle per view to show all six columns. Desktop supports drag and drop and epic lanes. Mobile supports swipe, a column selector and expandable epic sections.
 - Additional shared Board/List views with base filter, configurable quick chips, personal favorites/toggles, card-metadata choices, sort and optional epic lanes/subtask-as-card mode.
 - **Advanced reusable filter builder is M1 core, not later polish:** nested AND/OR/NOT, dynamic values, safe effective-property evaluation, live preview, shared editing and restorable versions.
 - One-field title capture, contextual defaults, detailed inline task edits, autosave, focused Undo/Redo, conflict feedback and responsive task panels.
@@ -86,8 +86,7 @@ and lifecycle/recurrence integration with content, sync, Undo and settings. Use 
 same server domain resolvers throughout and preserve existing household data.
 See the delivery plan for dependencies and acceptance ownership.
 
-M1 scope and the M2–M4 milestones are unchanged. **Stage 8 quality and integration
-are mandatory**; completion of the two priority stages does not constitute M1 acceptance.
+**Stage 8 quality and integration are mandatory** for M1 acceptance.
 
 ### 3.6 Definition of Done for M1
 
@@ -95,13 +94,12 @@ A fresh installer can deploy the versioned images behind HTTPS with persisted vo
 
 ## 4. M2 — Smart Assistance and notifications
 
-- Browser Geolocation API for current place, configurable radius, permission management and manual override; do not record movement history.
 - In-app notification center + Web Push in supported browsers/installed PWAs.
 - Events: deadline approaching, overdue once by default, assignment, task becomes actionable, comment, @mention.
 - Per-user categories, default reminder 24h before deadline, additional per-task reminders, quiet hours with deferred delivery, no deadline reminders after Done.
 - Review actual use and simplify quick creation, filter access and task details without changing the approved domain model.
 
-**M2 done when:** users can select/detect their current place and filter location-compatible tasks, reliably receive configured notifications in supported clients, and the notification flow is useful rather than noisy. Deliver with clear guidance about OS/browser push limitations.
+**M2 done when:** users reliably receive configured notifications in supported clients and the notification flow is useful rather than noisy. Deliver with clear guidance about OS/browser push limitations.
 
 ## 5. M3 — Stability and usability from actual usage
 

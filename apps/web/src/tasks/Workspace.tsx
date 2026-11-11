@@ -3,12 +3,14 @@ import { NavigationContext, useWorkspaceNavigation } from '../navigation/Navigat
 import { routeUrl, type WorkspaceView } from '../navigation/routes.js';
 import { useViewCatalog, viewName } from '../views/api.js';
 import { QuickBar } from '../views/QuickBar.js';
+import { CurrentPlaceContext, FilterWarnings, useDetectedPlace } from '../views/CurrentPlace.js';
+import { ViewEditor } from '../views/Editors.js';
 import { ViewLibrary } from '../views/Library.js';
 import { TaskPresentation, type Move } from '../views/TaskPresentation.js';
 import { Search } from '../content/Search.js';
 import { useHouseholdEvents } from './useHouseholdEvents.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   House,
@@ -39,6 +41,7 @@ import { patchTask, EditFailure, defined } from './api.js';
 import { Library } from './Library.js';
 
 type HistoryEntry = { current: Task; inverse: TaskChanges; forward: TaskChanges };
+type ViewStateChanges = { activeFilters?: string[]; splitFutureColumns?: boolean };
 export function Workspace({
   account,
   refresh,
@@ -66,6 +69,8 @@ export function Workspace({
   const activeView = catalog.data?.views.find(
     (v) => !v.deleted && (view === 'custom' ? v.id === customViewId : v.builtin === view),
   );
+  const viewState = activeView ? catalog.data?.states[activeView.id] : undefined;
+  const [editingView, setEditingView] = useState(false);
   const [captureEpic, setCaptureEpic] = useState<string | null>(null);
   const [moveUndo, setMoveUndo] = useState<{
     task: Task;
@@ -94,6 +99,26 @@ export function Workspace({
         }),
       ),
   });
+  const currentPlace = useDetectedPlace(entities.data);
+  const updateViewState = useMutation({
+    mutationFn: ({ householdId, viewId, baseVersion, changes }: {
+      householdId: string;
+      viewId: string;
+      baseVersion: number;
+      changes: ViewStateChanges;
+    }) =>
+      result(api.PUT('/api/v1/households/{householdId}/views/{id}/state', {
+        params: { path: { householdId, id: viewId } },
+        body: { baseVersion, ...changes },
+      })),
+    onMutate: () => setError(''),
+    onError: (e) => setError(e instanceof Error ? e.message : 'operation_failed'),
+    onSettled: (_result, _error, { householdId }) => queries.invalidateQueries({ queryKey: ['planning', householdId] }),
+  });
+  function saveViewState(changes: ViewStateChanges) {
+    if (!activeView) return;
+    updateViewState.mutate({ householdId: id, viewId: activeView.id, baseVersion: viewState?.version ?? 0, changes });
+  }
   const members = useQuery({
     queryKey: ['planning', id, 'members'],
     enabled: !!id,
@@ -106,7 +131,7 @@ export function Workspace({
     orderVersion: number;
     warnings: string[];
   }>({
-    queryKey: ['planning', id, 'tasks', activeView?.id],
+    queryKey: ['planning', id, 'tasks', activeView?.id, { currentPlaceId: currentPlace.id }],
     enabled: !!id && !!activeView,
     initialPageParam: 0,
     getNextPageParam: (last) => last.nextOffset ?? undefined,
@@ -114,7 +139,7 @@ export function Workspace({
       result(
         api.POST('/api/v1/households/{householdId}/task-query', {
           params: { path: { householdId: id } },
-          body: { viewId: activeView!.id, offset: Number(pageParam), limit: 100 },
+          body: defined({ viewId: activeView!.id, currentPlaceId: currentPlace.id, offset: Number(pageParam), limit: 100 }),
         }),
       ),
     refetchInterval: 30_000,
@@ -122,11 +147,11 @@ export function Workspace({
   const householdTasks = useQuery({
     queryKey: ['planning', id, 'has-tasks'],
     enabled: !!id && !!list.data && !list.data.pages.some(page => page.items.length),
-    queryFn: () => result(api.GET('/api/v1/households/{householdId}/tasks', {
-      params: { path: { householdId: id }, query: { view: 'board', limit: 1 } },
+    queryFn: () => result(api.POST('/api/v1/households/{householdId}/task-query', {
+      params: { path: { householdId: id } }, body: { limit: 1 },
     })),
   });
-  const activeFilters = activeView ? catalog.data?.states[activeView.id]?.activeFilters ?? [] : [];
+  const activeFilters = viewState?.activeFilters ?? [];
   const detail = useQuery({
     queryKey: ['planning', id, 'task', selected],
     enabled: !!id && !!selected,
@@ -349,6 +374,7 @@ export function Workspace({
 
   return (
     <NavigationContext.Provider value={router}>
+    <CurrentPlaceContext.Provider value={currentPlace}>
     <div className={'workspace ' + (collapsed ? 'nav-collapsed' : '')}>
       <aside className="workspace-nav">
         <div className="brand">
@@ -447,7 +473,28 @@ export function Workspace({
             <header className="page-heading">
               <div>
                 <p className="eyebrow">{household?.name ?? 'Tendly'}</p>
-                <h1>{activeView ? viewName(activeView, t) : t(view)}</h1>
+                <div className="view-title">
+                  <h1>{activeView ? viewName(activeView, t) : t(view)}</h1>
+                  {activeView && (
+                    <>
+                      <button type="button" className="view-settings-button" onClick={() => setEditingView(true)}>
+                        <Settings2 size={16} />
+                        {t('viewOptions')}
+                      </button>
+                      {activeView.presentation === 'board' && (
+                        <label className="check-label view-layout-option">
+                          <input
+                            type="checkbox"
+                            checked={viewState?.splitFutureColumns ?? false}
+                            disabled={updateViewState.isPending}
+                            onChange={(e) => saveViewState({ splitFutureColumns: e.target.checked })}
+                          />
+                          {t('splitFutureColumns')}
+                        </label>
+                      )}
+                    </>
+                  )}
+                </div>
                 {view === 'now' && <p className="muted">{t('todayFocus')}</p>}
               </div>
               <button
@@ -493,14 +540,12 @@ export function Workspace({
                 catalog={catalog.data}
                 entities={entities.data ?? []}
                 members={members.data ?? []}
+                savingViewState={updateViewState.isPending}
+                setActiveFilters={(activeFilters) => saveViewState({ activeFilters })}
               />
             )}
-            {list.data?.pages[0]?.warnings.map((w) => (
-              <p key={w} role="status">
-                {t(w)}
-              </p>
-            ))}
-            {!list.isPending && !list.isError && activeView && items.length === 0 && <div className="empty-state">
+            <FilterWarnings warnings={list.data?.pages[0]?.warnings} />
+            {!list.isPending && !list.isError && activeView && items.length === 0 && !list.data?.pages[0]?.warnings.length && <div className="empty-state">
               <p>{t(householdTasks.data?.items.length === 0 ? 'firstTaskHelp' : activeFilters.length || view === 'custom' ? 'noFilterMatches' : view === 'now' ? 'noTasksNow' : 'noTasksHere')}</p>
               {householdTasks.data?.items.length === 0 ? <button className="primary" onClick={() => { setCaptureEpic(null); setCapture('someday'); }}>{t('newTask')}</button>
                 : view === 'now' && <button onClick={() => setView('board')}>{t('board')}</button>}
@@ -518,6 +563,7 @@ export function Workspace({
                   column={route.column}
                   setColumn={column => router.navigate({ column }, true)}
                   taskHref={task => routeUrl({ ...route, task: task.id, comment: '', match: '' })}
+                  splitFutureColumns={viewState?.splitFutureColumns ?? false}
                   complete={(task) => void toggle(task)}
                   create={(c, epic) => {
                     setCaptureEpic(epic ?? null);
@@ -536,6 +582,16 @@ export function Workspace({
               <button disabled={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
                 {t('loadMore')}
               </button>
+            )}
+            {editingView && activeView && catalog.data && (
+              <ViewEditor
+                householdId={id}
+                catalog={catalog.data}
+                view={activeView}
+                entities={entities.data ?? []}
+                members={members.data ?? []}
+                onClose={() => setEditingView(false)}
+              />
             )}
           </>
         )}
@@ -755,6 +811,7 @@ export function Workspace({
         />
       )}
     </div>
+    </CurrentPlaceContext.Provider>
     </NavigationContext.Provider>
   );
 }

@@ -3,7 +3,7 @@ import { Temporal } from '@js-temporal/polyfill';
 import { parseExpression, type FilterExpression, type FilterValue } from '@tendly/shared';
 export type FilterContext = {
   userId: string;
-  currentPlaceId: string | null;
+  currentPlaceId: string | null | undefined;
   timezone: string;
   now: number;
 };
@@ -17,7 +17,8 @@ export function compileFilter(
     if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
     if (value.token === 'CURRENT_USER') return [context.userId];
     if (value.token === 'CURRENT_PLACE') {
-      if (!context.currentPlaceId) warnings.add('choose_current_place');
+      // A known position outside all saved places still matches tasks that can be done anywhere.
+      if (context.currentPlaceId === undefined) warnings.add('current_place_unavailable');
       return context.currentPlaceId ? [context.currentPlaceId] : [];
     }
     return Temporal.Instant.fromEpochMilliseconds(context.now)

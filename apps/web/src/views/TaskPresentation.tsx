@@ -5,6 +5,12 @@ import { columns, type Task, type Entity, type SavedView, type TaskColumn } from
 import type { Member } from '../tasks/TaskFields.js';
 import { EntityIcon, epicStyle } from '../tasks/identity.js';
 import { Dialog } from '../components/ui/dialog.js';
+
+type BoardColumn = TaskColumn | 'future';
+const futureColumns = new Set<TaskColumn>(['someday', 'within_year', 'within_month']);
+const groupedColumns = ['future', ...columns.filter((column) => !futureColumns.has(column))] as const;
+const taskColumnFor = (column: BoardColumn): TaskColumn => column === 'future' ? 'someday' : column;
+
 export type Move = {
   beforeId?: string | null;
   afterId?: string | null;
@@ -20,6 +26,7 @@ export function TaskPresentation({
   open,
   taskHref,
   column, setColumn,
+  splitFutureColumns,
   complete,
   create,
   move,
@@ -31,6 +38,7 @@ export function TaskPresentation({
   open: (task: Task) => void;
   taskHref: (task: Task) => string;
   column: TaskColumn; setColumn: (column: TaskColumn) => void;
+  splitFutureColumns: boolean;
   complete: (task: Task) => void;
   create: (column: TaskColumn, epicId?: string | null) => void;
   move: (task: Task, changes: Move) => Promise<void>;
@@ -48,17 +56,26 @@ export function TaskPresentation({
     swipe = useRef({ x: 0, y: 0 }),
     lastSwipe = useRef(0);
   const [dropTarget, setDropTarget] = useState('');
-  const drop = (event: React.DragEvent, target: string, changes: Move) => {
+  const boardColumns: readonly BoardColumn[] = splitFutureColumns ? columns : groupedColumns;
+  const boardColumnFor = (column: TaskColumn): BoardColumn =>
+    !splitFutureColumns && futureColumns.has(column) ? 'future' : column;
+  const activeColumn = boardColumnFor(column);
+  const drop = (event: React.DragEvent, changes: Move, destination?: BoardColumn) => {
     event.preventDefault();
     event.stopPropagation();
     setDropTarget('');
     if (dragged.current) {
       const task = dragged.current;
       dragged.current = null;
-      void move(task, changes).catch(() => {});
+      // Reordering within Future must preserve the card's planning horizon.
+      const column = destination !== undefined && (destination !== 'future' || !futureColumns.has(task.column))
+        ? taskColumnFor(destination)
+        : undefined;
+      if (column !== undefined || Object.keys(changes).length > 0)
+        void move(task, { ...changes, ...(column !== undefined ? { column } : {}) }).catch(() => {});
     }
   };
-  const droppable = (target: string, changes: Move) => ({
+  const droppable = (target: string, changes: Move, destination?: BoardColumn) => ({
     onDragOver: (event: React.DragEvent) => {
       if (dragged.current) {
         event.preventDefault();
@@ -66,18 +83,18 @@ export function TaskPresentation({
         setDropTarget(target);
       }
     },
-    onDrop: (event: React.DragEvent) => drop(event, target, changes),
+    onDrop: (event: React.DragEvent) => drop(event, changes, destination),
     'data-drop': dropTarget === target,
   });
   const card = (task: Task) => (
     <div
       key={task.id}
       {...(view.sort === 'manual'
-        ? droppable(task.id, {
-            beforeId: task.id,
-            ...(view.presentation === 'board' ? { column: task.column } : {}),
-            ...(view.epicLanes ? { epicId: task.epicId } : {}),
-          })
+        ? droppable(
+            task.id,
+            { beforeId: task.id, ...(view.epicLanes ? { epicId: task.epicId } : {}) },
+            view.presentation === 'board' ? boardColumnFor(task.column) : undefined,
+          )
         : {})}
     >
       <TaskCard
@@ -116,7 +133,7 @@ export function TaskPresentation({
       items.some(
         (task) =>
           task.epicId === (epic?.id ?? null) &&
-          (!mobile || view.presentation !== 'board' || task.column === column),
+          (!mobile || view.presentation !== 'board' || boardColumnFor(task.column) === activeColumn),
       ),
   );
   return (
@@ -124,10 +141,10 @@ export function TaskPresentation({
       {view.presentation === 'board' && (
         <label className="mobile-column-select">
           {t('column')}
-          <select value={column} onChange={(e) => setColumn(e.target.value as TaskColumn)}>
-            {columns.map((c) => (
+          <select value={activeColumn} onChange={(e) => setColumn(taskColumnFor(e.target.value as BoardColumn))}>
+            {boardColumns.map((c) => (
               <option key={c} value={c}>
-                {t('column_' + c)} ({items.filter(task => task.column === c).length})
+                {t('column_' + c)} ({items.filter(task => boardColumnFor(task.column) === c).length})
               </option>
             ))}
           </select>
@@ -143,8 +160,8 @@ export function TaskPresentation({
           const dx = e.changedTouches[0]!.clientX - swipe.current.x,
             dy = e.changedTouches[0]!.clientY - swipe.current.y;
           if (Math.abs(dx) > 70 && Math.abs(dy) < 50) {
-            const next = columns[columns.indexOf(column) + (dx < 0 ? 1 : -1)];
-            if (next) setColumn(next);
+            const next = boardColumns[boardColumns.indexOf(activeColumn) + (dx < 0 ? 1 : -1)];
+            if (next) setColumn(taskColumnFor(next));
             lastSwipe.current = Date.now();
           }
         }}
@@ -177,36 +194,38 @@ export function TaskPresentation({
               </div>
             ) : (
               <div className="board">
-                {columns.map((c) => (
-                  <section
-                    className="board-column"
-                    key={c}
-                    data-active={column === c}
-                    {...droppable(c + (epic?.id ?? ''), {
-                      column: c,
-                      ...(view.epicLanes ? { epicId: epic?.id ?? null } : {}),
-                      ...(view.sort === 'manual' ? { beforeId: null } : {}),
-                    })}
-                  >
-                    <header>
-                      <h2>{t('column_' + c)} <span className="muted">{laneItems.filter(task => task.column === c).length}</span></h2>
-                      <button
-                        className="quiet icon-button"
-                        aria-label={t('addTask') + ' · ' + t('column_' + c)}
-                        onClick={() => create(c, epic?.id)}
-                      >
-                        <Plus size={18} />
+                {boardColumns.map((c) => {
+                  const columnItems = laneItems.filter((task) => boardColumnFor(task.column) === c);
+                  const label = t('column_' + c);
+                  const addTask = () => create(taskColumnFor(c), epic?.id);
+                  return (
+                    <section
+                      className="board-column"
+                      key={c}
+                      data-active={activeColumn === c}
+                      {...droppable(c + (epic?.id ?? ''), {
+                        ...(view.epicLanes ? { epicId: epic?.id ?? null } : {}),
+                        ...(view.sort === 'manual' ? { beforeId: null } : {}),
+                      }, c)}
+                    >
+                      <header>
+                        <h2>{label} <span className="muted">{columnItems.length}</span></h2>
+                        <button
+                          className="quiet icon-button"
+                          aria-label={t('addTask') + ' · ' + label}
+                          onClick={addTask}
+                        >
+                          <Plus size={18} />
+                        </button>
+                      </header>
+                      <div className="column-cards">{columnItems.map(card)}</div>
+                      <button className="column-add" onClick={addTask}>
+                        <Plus size={16} />
+                        {t('addTask')}
                       </button>
-                    </header>
-                    <div className="column-cards">
-                      {laneItems.filter((task) => task.column === c).map(card)}
-                    </div>
-                    <button className="column-add" onClick={() => create(c, epic?.id)}>
-                      <Plus size={16} />
-                      {t('addTask')}
-                    </button>
-                  </section>
-                ))}
+                    </section>
+                  );
+                })}
               </div>
             );
           return view.epicLanes ? (

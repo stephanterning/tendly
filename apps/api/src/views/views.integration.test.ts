@@ -101,7 +101,9 @@ afterAll(async () => {
   }
 });
 it('uses typed set semantics, nested NOT and context values, with missing context never broadening a match', async () => {
-  const place = await tasks.entityWrite(actor, home, { kind: 'place', name: 'Home' }),
+  const place = await tasks.entityWrite(actor, home, {
+      kind: 'place', name: 'Home', latitude: 59.3, longitude: 18.1, radius: 100,
+    }),
     away = await tasks.entityWrite(actor, home, { kind: 'place', name: 'Away' });
   const car = await tasks.entityWrite(actor, home, { kind: 'resource', name: 'Car' }),
     trailer = await tasks.entityWrite(actor, home, { kind: 'resource', name: 'Trailer' });
@@ -152,13 +154,17 @@ it('uses typed set semantics, nested NOT and context values, with missing contex
       children: [rule('places', 'COMPATIBLE', { token: 'CURRENT_PLACE' })],
     }),
   );
-  expect(missing).toMatchObject({ count: 0, warnings: ['choose_current_place'] });
-  await service.contextWrite(actor, home, 0, place.id);
+  expect(missing).toMatchObject({ count: 0, warnings: ['current_place_unavailable'] });
+  const here = and(base, rule('places', 'COMPATIBLE', { token: 'CURRENT_PLACE' }));
   expect(
-    (await query(and(base, rule('places', 'COMPATIBLE', { token: 'CURRENT_PLACE' })))).items.map(
-      (t) => t.id,
-    ),
+    (await query(here, { currentPlaceId: place.id })).items.map((t) => t.id),
   ).toEqual([a.id, b.id]);
+  const outside = await query(here, { currentPlaceId: null });
+  expect(outside.items.map((t) => t.id)).toEqual([a.id]);
+  expect(outside.warnings).toEqual([]);
+  const hereFilter = await service.filterWrite(actor, home, definition('Here', here));
+  const searchHere = await new ContentService(db).search(actor, home, 'sets', 0, [hereFilter.id], place.id);
+  expect(searchHere.items.map((hit) => hit.id)).toEqual([a.id, b.id]);
   expect(
     (
       await query(
@@ -226,12 +232,22 @@ it('filters and sorts the whole set before paging or counting and treats SQL-lik
     query({ type: 'predicate', field: 'title', operator: 'GT', value: 'x' } as FilterExpression),
   ).rejects.toThrow();
 });
-it('combines the shared base and chips with AND while keeping toggles and favorites personal and per view', async () => {
+it('combines the shared base and chips with AND and keeps view preferences personal', async () => {
   const catalog = await service.catalog(actor, home),
     board = catalog.views.find((v) => v.builtin === 'board')!,
     now = catalog.views.find((v) => v.builtin === 'now')!,
     high = catalog.filters.find((f) => f.builtin === 'high')!;
-  await service.stateWrite(actor, home, board.id, 0, { activeFilters: [high.id], favorite: true });
+  const first = await service.stateWrite(actor, home, board.id, 0, {
+    activeFilters: [high.id],
+    favorite: true,
+  });
+  expect(first.splitFutureColumns).toBe(false);
+  await service.stateWrite(actor, home, board.id, first.version, { splitFutureColumns: true });
+  expect((await service.catalog(actor, home)).states[board.id]).toMatchObject({
+    activeFilters: [high.id],
+    favorite: true,
+    splitFutureColumns: true,
+  });
   const enabled = await service.query(actor, home, { viewId: board.id, offset: 0, limit: 100 });
   expect(enabled.items.every((t) => t.high)).toBe(true);
   const personal = await service.catalog(member, home);
@@ -240,6 +256,8 @@ it('combines the shared base and chips with AND while keeping toggles and favori
   await expect(service.stateWrite(actor, home, board.id, 0, { activeFilters: [] })).rejects.toThrow(
     'personal_state_conflict',
   );
+  expect(await service.stateWrite(actor, home, board.id, first.version + 1, { favorite: false }))
+    .toMatchObject({ activeFilters: [high.id], favorite: false, splitFutureColumns: true });
   const revised = await service.viewWrite(
     actor,
     home,
@@ -297,14 +315,18 @@ it('scopes every new route and rejects cross-household references and move ancho
   const foreignEntity = await tasks.entityWrite(intruder, foreign, {
       kind: 'place',
       name: 'Secret',
+      latitude: 59.3,
+      longitude: 18.1,
+      radius: 100,
     }),
     foreignTask = await tasks.create(intruder, foreign, { title: 'Secret task' });
   await expect(
     service.filterWrite(actor, home, definition('Leak', rule('places', 'IN', [foreignEntity.id]))),
   ).rejects.toThrow('invalid_filter_reference');
-  await expect(service.contextWrite(actor, home, 1, foreignEntity.id)).rejects.toThrow(
-    'invalid_filter_reference',
-  );
+  const invalidPlace = await query(rule('places', 'COMPATIBLE', { token: 'CURRENT_PLACE' }), {
+    currentPlaceId: foreignEntity.id,
+  });
+  expect(invalidPlace).toMatchObject({ count: 0, warnings: ['current_place_unavailable'] });
   await expect(query(allTasks, { filterIds: [randomUUID()] })).rejects.toThrow(
     'invalid_filter_reference',
   );
@@ -327,7 +349,6 @@ it('scopes every new route and rejects cross-household references and move ancho
     ['PUT', `/views/${view.id}`, { baseVersion: 1, changes: view }],
     ['POST', `/views/${view.id}/command`, { baseVersion: 1, command: 'delete' }],
     ['PUT', `/views/${view.id}/state`, { baseVersion: 0, favorite: true }],
-    ['PUT', '/view-context', { baseVersion: 0, currentPlaceId: null }],
     ['POST', '/task-query', { viewId: view.id }],
     ['POST', `/tasks/${task.id}/move`, { baseVersion: 1, orderVersion: 0, beforeId: null }],
     ['POST', '/search', { q: 'private', filterIds: [filter.id] }],

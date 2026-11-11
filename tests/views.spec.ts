@@ -130,6 +130,11 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
     .filter({ hasText: `${run} board` })
     .click();
   await expect(page.getByRole('heading', { name: `${run} board`, exact: true })).toBeVisible();
+  const header = page.locator('.view-title');
+  await expect(header.getByRole('button', { name: 'View settings', exact: true })).toBeVisible();
+  await expect(header.getByRole('checkbox', { name: 'Show separate future columns' })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Current place', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Future 1', exact: true })).toBeVisible();
   await expect(page.locator('.epic-lane>summary').last()).toContainText('Unassigned');
   await page.getByRole('button', { name: `${run} ready`, exact: true }).click();
   await expect(page.getByRole('link', { name: `${run} large`, exact: true })).toHaveCount(0);
@@ -138,7 +143,6 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   // though its underlying view stays mounted.
   await page.getByRole('link', { name: `${run} small`, exact: true }).click();
   await page.getByRole('button', { name: 'Back to tasks', exact: true }).click();
-  await page.locator('.view-secondary>summary').click();
   await page.getByRole('button', { name: 'View settings', exact: true }).click();
   await page.getByLabel('View name', { exact: true }).fill('Unsaved view');
   await page.goForward();
@@ -148,6 +152,12 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await page.goBack();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
+  const splitFuture = page.getByRole('checkbox', { name: 'Show separate future columns' });
+  await expect(splitFuture).not.toBeChecked();
+  await splitFuture.click();
+  await expect(splitFuture).toBeChecked();
+  await expect(page.getByRole('heading', { name: /^Future \d+$/ })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /^Within a Month/ }).first()).toBeVisible();
   await page.reload();
   await page
     .getByRole('navigation', { name: 'Views', exact: true })
@@ -157,6 +167,7 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
     'aria-pressed',
     'true',
   );
+  await expect(page.getByRole('heading', { name: /^Within a Month/ }).first()).toBeVisible();
   const mobile = await browser.newContext({
       viewport: { width: 390, height: 844 },
       locale: 'en-US',
@@ -173,6 +184,7 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
     'false',
   );
   await expect(member.getByRole('link', { name: `${run} large`, exact: true })).toBeVisible();
+  await expect(member.getByRole('option', { name: 'Future (1)', exact: true })).toHaveCount(1);
   // Shared editing propagates, while the other member's toggle remains off.
   await page.getByRole('button', { name: `${run} ready`, exact: true }).focus();
   await page.keyboard.press('Shift+F10');
@@ -232,7 +244,7 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await md.getByRole('combobox', { name: 'Epic', exact: true }).selectOption('');
   await md.getByRole('button', { name: 'Move task', exact: true }).click();
   await expect(md).toHaveCount(0);
-  await member.getByRole('combobox', { name: 'Column', exact: true }).selectOption('within_month');
+  await member.getByRole('combobox', { name: 'Column', exact: true }).selectOption('future');
   await expect(member.getByRole('link', { name: `${run} small`, exact: true })).toBeVisible();
   expect(await member.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
     true,
@@ -250,14 +262,45 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await dialog.getByLabel('What needs doing?', { exact: true }).fill(`${run} contextual`);
   await dialog.getByRole('button', { name: 'Add task', exact: true }).click();
   await expect(lane.getByRole('link', { name: `${run} contextual`, exact: true })).toBeVisible();
+  const year = await create('/tasks', {
+    title: `${run} year`,
+    column: 'within_year',
+    epicId: garden.id,
+  });
+  await splitFuture.click();
+  await expect(splitFuture).not.toBeChecked();
+  const future = lane.locator('.board-column').filter({
+    has: page.getByRole('heading', { name: 'Future 2', exact: true }),
+  });
+  await expect(future.getByRole('link', { name: year.title, exact: true })).toBeVisible();
+  await drag(
+    page,
+    future.getByRole('button', { name: `Move task · ${year.title}`, exact: true }),
+    future.getByRole('link', { name: `${run} contextual`, exact: true }),
+  );
+  await expect(future.locator('.card-open').first()).toHaveText(year.title);
+  await drag(
+    page,
+    lane.getByRole('button', { name: `Move task · ${run} large`, exact: true }),
+    future.getByRole('link', { name: `${run} contextual`, exact: true }),
+  );
+  await lane.getByRole('button', { name: 'Add task · Future', exact: true }).click();
+  await dialog.getByLabel('What needs doing?', { exact: true }).fill(`${run} future capture`);
+  await dialog.getByRole('button', { name: 'Add task', exact: true }).click();
+  await expect(lane.getByRole('link', { name: `${run} future capture`, exact: true })).toBeVisible();
   const all = (await (await page.request.get(prefix + '/tasks?limit=100')).json()).items;
   expect(all.find((task: { title: string }) => task.title === `${run} contextual`)).toMatchObject({
     column: 'within_month',
     epicId: garden.id,
   });
+  expect(all.find((task: { id: string }) => task.id === year.id)?.column).toBe('within_year');
+  expect(all.find((task: { title: string }) => task.title === `${run} large`)?.column).toBe('someday');
+  expect(all.find((task: { title: string }) => task.title === `${run} future capture`)).toMatchObject({
+    column: 'someday',
+    epicId: garden.id,
+  });
   // Pace the next phase instead of relaxing the production account rate limit.
   await page.waitForTimeout(Math.max(0, 61000 - (Date.now() - started)));
-  if ((await page.locator('.view-secondary').getAttribute('open')) === null) await page.locator('.view-secondary>summary').click();
   await page.getByRole('button', { name: 'View settings', exact: true }).click();
   await dialog.getByRole('combobox', { name: 'Presentation', exact: true }).selectOption('list');
   await dialog.getByRole('combobox', { name: 'Sorting', exact: true }).selectOption('effort');
@@ -300,4 +343,74 @@ test('shared nested filters and views, personal chips, preview, conflicts, lanes
   await expect(page.locator('.search-results')).toContainText(`${run} small`);
   expect(browserErrors).toEqual([]);
   await mobile.close();
+});
+
+test('activating the location filter starts browser location across Board, Now and search', async ({ page, context }) => {
+  const homePosition = { latitude: 60.5, longitude: 18.3 };
+  const workPosition = { latitude: 60.6, longitude: 18.3 };
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation(homePosition);
+  await context.addInitScript(() => {
+    const watch = navigator.geolocation.watchPosition.bind(navigator.geolocation);
+    let watchCount = 0;
+    navigator.geolocation.watchPosition = (...args) => {
+      document.documentElement.dataset.locationWatches = String(++watchCount);
+      return watch(...args);
+    };
+  });
+  await recover(context, page, 'owner@example.test');
+
+  const account = (await (await page.request.get('/api/v1/auth/session')).json()).account;
+  const prefix = `/api/v1/households/${account.households[0].id}`;
+  const headers = { origin: new URL(page.url()).origin };
+  const run = 'GPS ' + Date.now().toString(36);
+  const create = async (path: string, data: unknown) => {
+    const response = await page.request.post(prefix + path, { headers, data });
+    expect(response.ok(), await response.text()).toBe(true);
+    return response.json();
+  };
+  const home = await create('/entities', { name: `${run} home`, kind: 'place', radius: 100, ...homePosition });
+  const work = await create('/entities', { name: `${run} work`, kind: 'place', radius: 100, ...workPosition });
+  await create('/tasks', { title: `${run} at home`, column: 'todo', places: [home.id] });
+  await create('/tasks', { title: `${run} at work`, column: 'todo', places: [work.id] });
+  await create('/tasks', { title: `${run} anywhere`, column: 'todo' });
+
+  const chip = page.getByRole('button', { name: 'At my current place', exact: true });
+  const task = (suffix: string) => page.getByRole('link', { name: `${run} ${suffix}`, exact: true });
+  const entitiesLoaded = page.waitForResponse(response => response.url().endsWith('/entities'));
+  await page.goto('/?view=board');
+  await entitiesLoaded;
+  await expect(chip).toHaveAttribute('aria-pressed', 'false');
+  await expect(task('at work')).toBeVisible();
+  await expect(page.locator('html')).not.toHaveAttribute('data-location-watches', /.+/);
+  await chip.click();
+  await expect(page.locator('html')).toHaveAttribute('data-location-watches', '1');
+  await expect(task('at home')).toBeVisible();
+  await expect(task('anywhere')).toBeVisible();
+  await expect(task('at work')).toHaveCount(0);
+
+  await context.setGeolocation(workPosition);
+  await expect(task('at work')).toBeVisible();
+  await expect(task('at home')).toHaveCount(0);
+  await page.reload();
+  await expect(task('at work')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-location-watches', '1');
+
+  await page.getByRole('navigation', { name: 'Tendly', exact: true })
+    .getByRole('button', { name: 'Now', exact: true }).click();
+  if (await chip.getAttribute('aria-pressed') === 'false') await chip.click();
+  await expect(task('at work')).toBeVisible();
+  await expect(task('at home')).toHaveCount(0);
+
+  await page.goto('/?view=search');
+  await page.getByRole('searchbox').fill(run);
+  await page.getByText('Filter tasks and their comments', { exact: true }).click();
+  await page.getByRole('checkbox', { name: 'At my current place', exact: true }).check();
+  const hits = page.locator('.search-results');
+  await expect(hits.getByText(`${run} at work`, { exact: true })).toBeVisible();
+  await expect(hits.getByText(`${run} at home`, { exact: true })).toHaveCount(0);
+
+  await context.setGeolocation({ latitude: 61, longitude: 18.3 });
+  await expect(hits.getByText(`${run} anywhere`, { exact: true })).toBeVisible();
+  await expect(hits.getByText(`${run} at work`, { exact: true })).toHaveCount(0);
 });

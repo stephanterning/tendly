@@ -10,7 +10,8 @@ revision creates a new revision. Deletion is reversible and removes a filter fro
 all effective quick bars, retaining references for restoration. Built-in Now and
 Board cannot be deleted and have explicit reset commands. A view's quick-bar order,
 sort, card properties and epic-lane configuration are shared; favorites and enabled
-chips are versioned separately per user/view. Current Place is personal per household.
+chips are versioned separately per user/view. As of 2026-11-11, Current Place is detected
+on the device for the active household and shared across the workspace.
 
 The public AST has typed predicates and AND/OR/NOT groups. Validation limits each
 expression to 150 nodes, ten nesting levels and 50 children per group; fields,
@@ -54,9 +55,11 @@ as unfinished options here.
 
 - `GET view-catalog`; shared `POST/PUT filters`, filter version history and commands.
 - Shared `POST/PUT views` and reset/delete/restore commands; personal `PUT views/:id/state`.
-- Personal `PUT view-context`; `POST task-query`, `POST search`, `POST tasks/:id/move`.
+- `POST task-query`, `POST search` and `POST tasks/:id/move`. Query and search accept
+  the detected place ID per request. The browser keeps the device coordinates.
 - Migration 0005 adds definitions, filter history, personal states/context and order
   revisions. Existing tasks, content and file records are untouched. Built-ins are
   initialized idempotently for existing and new households under a write lock.
+- Migration 0007 removes stored manual Current Place selections.
 - OpenAPI and the generated client describe the interfaces; recursive AST validation
   remains authoritative on the server. Every operation checks fresh household access.

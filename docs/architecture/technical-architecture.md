@@ -82,7 +82,7 @@ The schema below describes logical entities, **not a mandate for exact table nam
 | `templates`, `recurrence_series`, `occurrences` | Shared template engine, recurrence rules, schedule instance uniqueness |
 | `views`, `filters`, `filter_versions` | Household-defined views/filter JSONB, creators, history |
 | `view_quick_filters` | View-specific ordering of reusable filter IDs |
-| `user_view_state` | Personal favorites, active chips per view |
+| `user_view_state` | Personal favorites, active chips and split Future column preference per view |
 | `comments`, `attachments`, `task_activities` | Content and audit metadata, file paths not public URLs |
 | `notification_settings` (v1.1) | Per-user preferences; delivery jobs |
 | `app_settings`, `household_settings` | Defaults and secrets references, never plaintext credentials in responses |
@@ -107,7 +107,9 @@ type TaskColumn = 'someday' | 'within_year' | 'within_month' | 'todo' | 'in_prog
 - Else if `status==='in_progress'`, column `in_progress`.
 - Else map `planningBucket: someday→someday, within_year→within_year, within_month→within_month, ready→todo`.
 
-Maintain valid combinations via one domain-level `moveTaskToColumn` operation. The bucket survives work and completion so planning context is retained. Record the **immediate visible pre-Done column** on transition into Done, not the first-ever planning bucket. Reopen to that column, with a safe fallback if a record predates this feature. The UI and API filtering expose `TaskColumn` as a single user-visible field; never require editing status and bucket independently.
+Maintain valid combinations via one domain-level `moveTaskToColumn` operation. The bucket survives work and completion so planning context is retained. On completion record the **exact pre-Done `TaskColumn`**. Reopen to that column, with a safe fallback for older records. Task editing and API filtering use the same `TaskColumn` values.
+
+Board presentation groups the three future task columns by default. The client groups the returned `TaskColumn` values and sends canonical column values for task moves. The layout preference is stored in the personal view state.
 
 A separate `available`/`blocked` database field is **not** authoritative. Derive availability using the Product Specification's date/dependency constraints. Never move cards automatically because a date passed or a dependency changed.
 
@@ -154,7 +156,7 @@ Store saved filter ASTs in PostgreSQL **JSONB**, with version entries and `creat
 - Scope/filter at the server. For effective inherited properties, resolve them in batches within database queries or a bounded server filtering pipeline; pagination/sorting must operate on **fully filtered effective results**, not only raw rows from the current page.
 - All view types, live previews and search-filter combinations use the **same evaluator**, so matching sets cannot disagree between Now, Board and custom views.
 - A view's filter composition is exactly `base AND each active quick filter`; quick-filter availability/order is shared, personal on/off switches are stored per user/view. Editing a shared definition propagates to every reference and creates a restorable version. Prevent filter self-references/cycles if such references are introduced in the future; they are not required in v1.
-- Expose `Column` to the builder, not internal status/planningBucket selectors. Display meaningful feedback if the Current Place token lacks a chosen place; avoid silently interpreting it as a physical location.
+- Expose `Column` to the builder. A single browser geolocation watcher supplies Current Place across the signed-in workspace. The browser resolves the closest configured place inside its radius. POST filter requests send its household place ID, explicit `null` for a known position outside the configured radii, or omit the field when the position is unknown. The server validates the place within the household and evaluates the filter. Device coordinates and place history are never stored by the server.
 - Manual card order is shared globally and must remain stable under filtering and view switching; sorting by other properties is a presentation/query choice.
 
 ## 6. Templates and recurrence engine
@@ -231,4 +233,4 @@ Explain domain invariants in concise inline comments **why**, not narrating obvi
 
 ## 12. Explicit non-goals for initial architecture
 
-No proprietary managed backend, no Redis, no RLS v1, no tRPC, no collaborative rich-text CRDT/OT, no required App Store client, no full offline mutation engine, no automatically published production updates, no mandatory live GPS or push for v1.0, and no integrated cloud backup before v1.3. All these exclusions are scoped to approved milestones, not permanent bans on future development.
+No proprietary managed backend, no Redis, no RLS v1, no tRPC, no collaborative rich-text CRDT/OT, no required App Store client, no full offline mutation engine, no automatically published production updates, no push for v1.0, and no integrated cloud backup before v1.3. All these exclusions are scoped to approved milestones, not permanent bans on future development.

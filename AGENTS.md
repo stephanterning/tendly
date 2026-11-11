@@ -32,7 +32,7 @@ Written requirements override AI-generated reference-image labels. If an ambiguo
 - Cycles and cross-household references are rejected.
 - Item-level dynamic inheritance (`parent effective − child exclusions + child additions`) is correct through deep descendants.
 - Task availability obeys effective dates and all ancestor dependency blockers, independently of user-facing column.
-- Exactly **six** columns; user sees one `Column` field and completion reopen restores the immediate prior column.
+- Exactly **six** task column values. The Board groups the three planning horizons under Future by default and can show them separately per user and view. The task has one `Column` field, and reopening restores its immediate prior column.
 - Server filter AST uses validated parameterized compilation, matching effective inherited values; view base + active quick filters combine via AND.
 - Recurrence trees remap **internal** edges to new instances, preserve **external** edges and deduplicate job retries.
 - Concurrent edits do not silently destroy same-field changes, and Undo does not clobber newer edits.
@@ -48,7 +48,7 @@ Protect **behavior, not implementation details**. Use focused Vitest domain/data
 - Task cards show soft epic-colored backgrounds and monochrome icon/text variants per theme. **XS–XL** precedes precise time estimates visually.
 - A **place** is a named physical location (e.g. Sandvreten); Outdoors is better represented as a tag.
 - Quick-filter chips are **saved, shareable, expressive filters** with per-view presence and per-user toggle state.
-- **v1.0:** manual place selection, no live GPS, no push delivery, no integrated automated cloud backup. **v1.1:** GPS + notifications. **v1.3:** Restic/Rclone Google Drive and Dropbox backup.
+- **v1.0:** app-wide current place from browser geolocation with permission. **v1.1:** notifications and push delivery. **v1.3:** Restic/Rclone Google Drive and Dropbox backup.
 
 ## Definition of done for changes
 
